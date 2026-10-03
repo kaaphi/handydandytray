@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -37,35 +38,50 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "handydandytray",
 		Description: "A demo of using raw HTML & CSS",
-		Services: []application.Service{
-			application.NewService(&GreetService{}),
-		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
+
+		// Mac: application.MacOptions{
+		// 	ApplicationShouldTerminateAfterLastWindowClosed: true,
+		// },
 	})
+
+	app.RegisterService(
+		application.NewService(&TodoService{
+			logger: app.Logger,
+		}),
+	)
+
+	systray := app.SystemTray.New()
+
+	menu := app.NewMenu()
+	menu.Add("Settings...").OnClick(func(ctx *application.Context) {
+		openSettingsWindow(app)
+	})
+	menu.Add("Quit").OnClick(func(ctx *application.Context) {
+		app.Quit()
+	})
+	systray.SetMenu(menu)
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
 	// 'Mac' options tailor the window when running on macOS.
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
-	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Window 1",
-		// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
-		Width:  1000,
-		Height: 618,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		BackgroundColour: application.NewRGB(6, 7, 15),
-		URL:              "/",
-	})
+	// app.Window.NewWithOptions(application.WebviewWindowOptions{
+	// 	Title: "Window 1",
+	// 	// Window sized to the golden ratio (1000 / 618 ≈ 1.618).
+	// 	Width:  1000,
+	// 	Height: 618,
+	// 	Mac: application.MacWindow{
+	// 		InvisibleTitleBarHeight: 50,
+	// 		Backdrop:                application.MacBackdropTranslucent,
+	// 		TitleBar:                application.MacTitleBarHiddenInset,
+	// 	},
+	// 	BackgroundColour: application.NewRGB(6, 7, 15),
+	// 	URL:              "/",
+	// })
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
@@ -84,4 +100,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func openSettingsWindow(app *application.App) {
+	// Focus existing instance if already open
+	if settingsWin, ok := app.Window.GetByName("settings"); ok {
+		settingsWin.Show()
+		settingsWin.Focus()
+		return
+	}
+
+	// Create new window pointing to the /settings route
+	settingsWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:   "settings",
+		Title:  "Preferences",
+		Width:  600,
+		Height: 450,
+		URL:    "/",
+	})
+
+	// This also prevents the application from exiting
+	settingsWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()         // Stop Wails from destroying the window
+		settingsWin.Hide() // Simply hide it from view
+	})
 }
