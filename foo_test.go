@@ -30,7 +30,7 @@ func TestFoo(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	todos, err := todoService.GetTodos(ctx)
+	todos, err := todoService.GetActiveTodos(ctx)
 
 	if err != nil {
 		log.Fatal(err)

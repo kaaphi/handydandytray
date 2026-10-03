@@ -7,12 +7,14 @@ export type UseTodos = {
     todos: Todo[]
     isLoading: boolean
     error: Error | null
-    createTodo: UseMutateAsyncFunction<void, Error, string, unknown>
+    createTodo: UseMutateAsyncFunction<void, Error, NewTodo, unknown>
     deleteTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
     updateTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
 }
 
-export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt">;
+export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt" | "dueAt">;
+
+export type NewTodo = Omit<Todo, "id">
 
 
 export const useTodos = (completedTodos: boolean = false): UseTodos => {
@@ -27,7 +29,7 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         queryFn: async () => {
             const rawTodos = await queryFunction()
 
-            return rawTodos?.map((todo) => transformDatesFromGo(todo, ["completedAt", "remindMeAt"]))
+            return rawTodos?.map((todo) => transformDatesFromGo(todo, ["completedAt", "remindMeAt", "dueAt"]))
         },
         //Because only the Todo window is reading and modifying this data, we don't ever have to refresh the cache
         //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
@@ -36,10 +38,10 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
     // Mutation for updating data
     const createTodoMutation = useMutation({
-        mutationFn: (description: string) => TodoService.AddTodo({
+        mutationFn: (todo: NewTodo) => TodoService.AddTodo(transformDatesToGo({
             id: uuidv7(),
-            description: description
-        }),
+            ...todo
+        }, ["completedAt", "remindMeAt", "dueAt"])),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKey });
         },
@@ -47,14 +49,14 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
 
     const deleteTodoMutation = useMutation({
-        mutationFn: (todo: Todo) => TodoService.DeleteTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt"])),
+        mutationFn: (todo: Todo) => TodoService.DeleteTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt", "dueAt"])),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey:queryKey });
         },
     })
 
     const updateTodoMutation = useMutation({
-        mutationFn: (todo: Todo) => TodoService.UpdateTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt"])),
+        mutationFn: (todo: Todo) => TodoService.UpdateTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt", "dueAt"])),
         onSuccess: () => {
             // TODO improve this to use current data to know whether we are changing the completion date to move from active to completed or vice-versa
             queryClient.invalidateQueries({ queryKey: ['todos'] });

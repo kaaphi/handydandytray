@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"time"
 	"uuid"
 
@@ -13,19 +12,19 @@ import (
 )
 
 type TodoService struct {
-	db     *sql.DB
-	logger *slog.Logger
+	db  *sql.DB
+	app *application.App
 }
 
 type Todo struct {
 	ID          uuid.UUID `json:"id"`
 	Description string    `json:"description"`
+	DueAt       time.Time `json:"dueAt,omitzero"`
 	CompletedAt time.Time `json:"completedAt,omitzero"`
 	RemindMeAt  time.Time `json:"remindMeAt,omitzero"`
 }
 
 func (g *TodoService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	g.logger.Info("Starting up!")
 	db, err := InitDB(ctx, "test.db")
 
 	if err == nil {
@@ -43,6 +42,7 @@ func (g *TodoService) ServiceShutdown() error {
 }
 
 func (g *TodoService) AddTodo(ctx context.Context, todo Todo) error {
+	g.app.Logger.Info(fmt.Sprintf("add todo: %+v", todo))
 	return g.addOrUpdateTodo(ctx, todo, `INSERT INTO todos (data, id) VALUES (jsonb(?), ?)`)
 }
 

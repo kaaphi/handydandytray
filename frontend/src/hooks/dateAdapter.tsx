@@ -2,7 +2,7 @@
  * Converts specified string properties of T into Date objects
  */
 export type WithDates<T, K extends keyof T> = Omit<T, K> & {
-  [P in K]: Date;
+  [P in K]?: Date;
 };
 
 export const transformDatesFromGo = <T extends Record<string, any>, K extends keyof T>(
@@ -33,6 +33,8 @@ export const transformDatesToGo = <T extends Record<string, any>, K extends keyo
       raw[key] = value; // Already an ISO string
     }
   }
+
+  console.log(raw)
 
   return raw;
 }

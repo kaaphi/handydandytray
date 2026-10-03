@@ -8,6 +8,7 @@ import * as uuid$0 from "../uuid/models.js";
 export interface Todo {
     "id": uuid$0.UUID;
     "description": string;
+    "dueAt"?: string;
     "completedAt"?: string;
     "remindMeAt"?: string;
 }

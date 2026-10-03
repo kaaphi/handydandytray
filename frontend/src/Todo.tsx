@@ -1,10 +1,17 @@
-import { ActionIcon, Button, Card, Modal, Stack, Textarea, Typography } from "@mantine/core"
+import { ActionIcon, Button, Card, Code, Group, Modal, Stack, Text, Textarea, Typography } from "@mantine/core"
 import { Todo, UseTodos, useTodos } from "./hooks/useTodos"
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
 import { useRef } from "react"
 import { CheckIcon, ClockIcon } from "@phosphor-icons/react"
+import { DateInput } from "@mantine/dates"
+import dayjs from "dayjs"
+import weekday from 'dayjs/plugin/weekday'
+import isToday from 'dayjs/plugin/isToday'
+
+dayjs.extend(weekday);
+dayjs.extend(isToday);
 
 
 const convertLinkUrl = (url: string): string => {
@@ -21,10 +28,15 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
         mode: "uncontrolled",
         initialValues: {
             description: "",
+            dueAt: undefined,
         },
         validate: {
-            description: (value) => value.length > 0 ? null : "Invalid description",
-        }
+            description: (value) => value.length > 0 ? null : "Invalid description",            
+        },
+        transformValues: (values) => ({
+            description: values.description,
+            dueAt: values.dueAt ? new Date(values.dueAt) : undefined,
+        })
     })
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -60,10 +72,15 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
     }
     
     return <form onSubmit={form.onSubmit((values) => {
-        todos.createTodo(values.description)
+        console.log(values)
+        todos.createTodo(values)
         close()
     })}>
     <Textarea placeholder="description" key={form.key("description")} {...form.getInputProps("description", {type: "input"})} onPaste={handlePaste} ref={textareaRef}/>
+    <DateInput key={form.key("dueAt")} placeholder="Due Date"  presets={[
+         { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
+         { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
+    ]} highlightToday clearable {...form.getInputProps("dueAt", {type: "input"})} />
     <Button type="submit">Add Todo</Button>
     </form>
 }
@@ -72,14 +89,22 @@ const TodoItem = ({ todo }: { todo: Todo }) => {
     const todos = useTodos()
 
     return <Card withBorder>
+        <Card.Section>
         <Typography>
             <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
         </Typography>
+        {todo.dueAt ? <Text>{dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text> : null}
+        </Card.Section>
+        <Card.Section>
+        <Group>
         <ActionIcon onClick={e => {
             todo.completedAt = new Date()
             todos.updateTodo(todo)
         }}><CheckIcon size={32} /></ActionIcon>
         <ActionIcon><ClockIcon size={32} /></ActionIcon>
+        <Button onClick={e => todos.deleteTodo(todo)}>DELETE</Button>
+        </Group>
+        </Card.Section>
     </Card>
 }
 

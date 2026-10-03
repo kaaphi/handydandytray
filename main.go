@@ -49,7 +49,7 @@ func main() {
 
 	app.RegisterService(
 		application.NewService(&TodoService{
-			logger: app.Logger,
+			app: app,
 		}),
 	)
 
