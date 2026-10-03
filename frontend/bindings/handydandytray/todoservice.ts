@@ -13,6 +13,10 @@ export function AddTodo(todo: $models.Todo): $CancellablePromise<void> {
     return $Call.ByID(4097713788, todo);
 }
 
+export function DeleteAll(): $CancellablePromise<void> {
+    return $Call.ByID(2654288625);
+}
+
 export function DeleteTodo(todo: $models.Todo): $CancellablePromise<void> {
     return $Call.ByID(2048827770, todo);
 }

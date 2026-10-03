@@ -19,7 +19,7 @@ type TodoService struct {
 type Todo struct {
 	ID          uuid.UUID `json:"id"`
 	Description string    `json:"description"`
-	DueAt       time.Time `json:"dueAt,omitzero"`
+	DueAt       string    `json:"dueAt,omitempty"`
 	CompletedAt time.Time `json:"completedAt,omitzero"`
 	RemindMeAt  time.Time `json:"remindMeAt,omitzero"`
 }
@@ -59,7 +59,18 @@ func (g *TodoService) DeleteTodoById(ctx context.Context, todoId string) error {
 
 	_, err := g.db.ExecContext(ctx, query, todoId)
 	if err != nil {
-		return fmt.Errorf("insert/update todo: %w", err)
+		return fmt.Errorf("delete todo: %w", err)
+	}
+
+	return nil
+}
+
+func (g *TodoService) DeleteAll(ctx context.Context) error {
+	query := `DELETE FROM todos`
+
+	_, err := g.db.ExecContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("delete todos: %w", err)
 	}
 
 	return nil

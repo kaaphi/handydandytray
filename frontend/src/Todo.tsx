@@ -1,10 +1,10 @@
-import { ActionIcon, Button, Card, Code, Group, Modal, Stack, Text, Textarea, Typography } from "@mantine/core"
+import { ActionIcon, Box, Button, Card, Group, Modal, Paper, ScrollArea, Stack, Tabs, Text, Textarea, Title, Typography } from "@mantine/core"
 import { Todo, UseTodos, useTodos } from "./hooks/useTodos"
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
 import { useRef } from "react"
-import { CheckIcon, ClockIcon } from "@phosphor-icons/react"
+import { ArrowUDownLeftIcon, CheckIcon, ClockIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { DateInput } from "@mantine/dates"
 import dayjs from "dayjs"
 import weekday from 'dayjs/plugin/weekday'
@@ -32,11 +32,7 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
         },
         validate: {
             description: (value) => value.length > 0 ? null : "Invalid description",            
-        },
-        transformValues: (values) => ({
-            description: values.description,
-            dueAt: values.dueAt ? new Date(values.dueAt) : undefined,
-        })
+        }
     })
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -76,7 +72,7 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
         todos.createTodo(values)
         close()
     })}>
-    <Textarea placeholder="description" key={form.key("description")} {...form.getInputProps("description", {type: "input"})} onPaste={handlePaste} ref={textareaRef}/>
+    <Textarea data-autofocus placeholder="description" key={form.key("description")} {...form.getInputProps("description", {type: "input"})} onPaste={handlePaste} ref={textareaRef}/>
     <DateInput key={form.key("dueAt")} placeholder="Due Date"  presets={[
          { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
          { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
@@ -86,42 +82,99 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
 }
 
 const TodoItem = ({ todo }: { todo: Todo }) => {
-    const todos = useTodos()
+    const isCompleted = !!todo.completedAt
+    const todos = useTodos(isCompleted)
 
     return <Card withBorder>
         <Card.Section>
-        <Typography>
-            <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
-        </Typography>
-        {todo.dueAt ? <Text>{dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text> : null}
+            <Typography>
+                <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
+            </Typography>
+            {todo.dueAt && <Text>Due: {dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text>}
+            {todo.completedAt && <Text>Completed: {dayjs(todo.dueAt).format()}</Text>}
         </Card.Section>
-        <Card.Section>
-        <Group>
-        <ActionIcon onClick={e => {
-            todo.completedAt = new Date()
-            todos.updateTodo(todo)
-        }}><CheckIcon size={32} /></ActionIcon>
-        <ActionIcon><ClockIcon size={32} /></ActionIcon>
-        <Button onClick={e => todos.deleteTodo(todo)}>DELETE</Button>
-        </Group>
+        {!isCompleted && <Card.Section>
+            <Group>
+                <ActionIcon onClick={e => {
+                    todo.completedAt = dayjs()
+                    todos.updateTodo(todo)
+                }}><CheckIcon size={32} /></ActionIcon>
+                <ActionIcon><ClockIcon size={32} /></ActionIcon>
+                <ActionIcon onClick={e => todos.deleteTodo(todo)}><TrashIcon size={32} /></ActionIcon>
+            </Group>
         </Card.Section>
+        }
+        {isCompleted && <Card.Section>
+            <Group>
+                <ActionIcon onClick={e => {
+                    todo.completedAt = undefined
+                    todos.updateTodo(todo)
+                }}><ArrowUDownLeftIcon size={32} /></ActionIcon>
+                <ActionIcon onClick={e => todos.deleteTodo(todo)}><TrashIcon size={32} /></ActionIcon>
+            </Group>
+        </Card.Section>
+        }
     </Card>
 }
 
-export const Todos = () => {
+
+
+const InProgress = () => {
     const [addTodoOpened, { open: openAddTodo, close: closeAddTodo}] = useDisclosure(false)
     const todos = useTodos()
     
     return (
         <>
             <Modal opened={addTodoOpened} onClose={closeAddTodo} title="Add Todo">
-                <AddTodo todos={todos} close={closeAddTodo}/>
+                <AddTodo todos={todos} close={closeAddTodo} />
             </Modal>
+            <ScrollArea style={{ flex: 1 }}>
+                <Stack>
+                    {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} />)}
+                </Stack>
+            </ScrollArea>
+            <Box style={{ flexShrink: 0, borderRadius: 0 }}>
+                <ActionIcon disabled={todos.isLoading} onClick={openAddTodo} ><PlusIcon size={32} /></ActionIcon>
+            </Box>
+        </>
+    )
+}
+
+const Completed = () => {
+    const todos = useTodos(true)
+    
+    return (
+         <ScrollArea style={{ flex: 1 }}>
+            
             <Stack>
                 {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo}/>)}
             </Stack>
-            <Button disabled={todos.isLoading} onClick={openAddTodo} >Add one!</Button>
-        </>
+        </ScrollArea>
     )
+}
 
+export const Todos = () => {
+    return  (
+    // 1. Root container fills entire window height and prevents global window scrolling
+    <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <Tabs defaultValue="inProgress" keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        <Tabs.List style={{ flexShrink: 0 }}>
+            <Tabs.Tab value="inProgress">
+                In Progress
+            </Tabs.Tab>
+            <Tabs.Tab value="completed">
+                Completed
+            </Tabs.Tab>
+
+        </Tabs.List>
+        <Tabs.Panel value="inProgress" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <InProgress />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="completed" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Completed />
+        </Tabs.Panel>
+    </Tabs>
+    </Box>
+    )
 }

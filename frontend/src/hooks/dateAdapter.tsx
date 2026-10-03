@@ -1,8 +1,10 @@
+import dayjs, { Dayjs } from "dayjs";
+
 /**
  * Converts specified string properties of T into Date objects
  */
 export type WithDates<T, K extends keyof T> = Omit<T, K> & {
-  [P in K]?: Date;
+  [P in K]?: Dayjs;
 };
 
 export const transformDatesFromGo = <T extends Record<string, any>, K extends keyof T>(
@@ -12,7 +14,7 @@ export const transformDatesFromGo = <T extends Record<string, any>, K extends ke
   const transformed = { ...raw } as any;
   for (const key of dateKeys) {
     if (transformed[key]) {
-      transformed[key] = new Date(transformed[key]);
+      transformed[key] = dayjs(transformed[key]);
     }
   }
   return transformed;
@@ -27,7 +29,7 @@ export const transformDatesToGo = <T extends Record<string, any>, K extends keyo
 
   for (const key of dateKeys) {
     const value = raw[key];
-    if (value instanceof Date) {
+    if (dayjs.isDayjs(value)) {
       raw[key] = value.toISOString();
     } else if (typeof value === 'string') {
       raw[key] = value; // Already an ISO string
