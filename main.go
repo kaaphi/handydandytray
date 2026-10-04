@@ -115,7 +115,7 @@ func openSettingsWindow(app *application.App) {
 		Name:   "settings",
 		Title:  "Preferences",
 		Width:  600,
-		Height: 450,
+		Height: 600,
 		URL:    "/",
 	})
 

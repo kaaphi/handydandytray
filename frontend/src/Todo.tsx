@@ -1,12 +1,12 @@
-import { ActionIcon, Box, Button, Card, Group, Modal, Paper, ScrollArea, Stack, Tabs, Text, Textarea, Title, Typography } from "@mantine/core"
+import { ActionIcon, Box, Button, Card, Divider, Group, Modal, ScrollArea, Stack, Tabs, Text, Textarea, Typography } from "@mantine/core"
 import { Todo, UseTodos, useTodos } from "./hooks/useTodos"
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { ArrowUDownLeftIcon, CheckIcon, ClockIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
-import { DateInput } from "@mantine/dates"
-import dayjs from "dayjs"
+import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates"
+import dayjs, { Dayjs } from "dayjs"
 import weekday from 'dayjs/plugin/weekday'
 import isToday from 'dayjs/plugin/isToday'
 
@@ -81,7 +81,49 @@ const AddTodo = ({todos, close} : {todos: UseTodos, close: () => void}) => {
     </form>
 }
 
-const TodoItem = ({ todo }: { todo: Todo }) => {
+const SetReminder = ({ todo, close }: { todo: Todo, close: () => void }) => {
+    const todos = useTodos()
+    const [customOpened, { open: openCustom }] = useDisclosure(false)    
+    const [customDate, setCustomDate] = useState<string | null>(dayjs().format("YYYY-MM-DD"));
+    const [customTime, setCustomTime] = useState("");
+
+    const setReminder = (reminder?: Dayjs) => () => {
+        todo.remindMeAt = reminder
+        todos.updateTodo(todo)
+        close()
+    }
+
+    const options = [
+        { value: dayjs().add(15, 'minute'), label: "15 Minutes" },
+        { value: dayjs().add(30, 'minute'), label: "30 Minutes" },
+        { value: dayjs().add(1, 'hour'), label: "1 Hour" },
+        { value: dayjs().add(3, 'hour'), label: "3 Hours" },
+        { value: dayjs().add(1, 'day').set("hour", 6).set("minute", 30).set("second", 0), label: "Tomorrow" },
+    ]
+
+    return (
+        <Stack gap="xs">
+            {options.map((option) =>
+                <Button variant="subtle" onClick={setReminder(option.value)}>{option.label}</Button>
+            )}
+            <Divider />
+            {todo.remindMeAt && <Button variant="subtle" color="red" onClick={setReminder(undefined)}>Clear Reminder</Button>}
+            <Button variant="subtle" onClick={openCustom}>Custom</Button>
+            {customOpened && <>
+            <DatePickerInput value={customDate} onChange={setCustomDate} placeholder="Select date" highlightToday valueFormat="YYYY-MM-DD"/>
+            <TimePicker value={customTime} onChange={setCustomTime} withDropdown closeDropdownOnPresetSelect presets={getTimeRange({ startTime: '06:00:00', endTime: '17:00:00', interval: '00:30:00' })}/>
+            <Button disabled={!customDate || !customTime} onClick={setReminder(dayjs(`${customDate} ${customTime}`, "YYYY-MM-DD HH:mm:ss"))}>Set Reminder</Button>
+            </>}
+        </Stack>
+    )
+}
+
+type TodoItemParams = {
+    todo: Todo,
+    editReminder?: (todo: Todo) => void
+}
+
+const TodoItem = ({ todo, editReminder = () => {} }: TodoItemParams) => {
     const isCompleted = !!todo.completedAt
     const todos = useTodos(isCompleted)
 
@@ -91,6 +133,7 @@ const TodoItem = ({ todo }: { todo: Todo }) => {
                 <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
             </Typography>
             {todo.dueAt && <Text>Due: {dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text>}
+            {todo.remindMeAt && <Text>Remind me: {dayjs(todo.remindMeAt).format("YYYY-MM-DD HH:mm")}</Text>}
             {todo.completedAt && <Text>Completed: {dayjs(todo.dueAt).format()}</Text>}
         </Card.Section>
         {!isCompleted && <Card.Section>
@@ -99,7 +142,7 @@ const TodoItem = ({ todo }: { todo: Todo }) => {
                     todo.completedAt = dayjs()
                     todos.updateTodo(todo)
                 }}><CheckIcon size={32} /></ActionIcon>
-                <ActionIcon><ClockIcon size={32} /></ActionIcon>
+                <ActionIcon onClick={e => editReminder(todo)}><ClockIcon size={32} /></ActionIcon>
                 <ActionIcon onClick={e => todos.deleteTodo(todo)}><TrashIcon size={32} /></ActionIcon>
             </Group>
         </Card.Section>
@@ -121,6 +164,7 @@ const TodoItem = ({ todo }: { todo: Todo }) => {
 
 const InProgress = () => {
     const [addTodoOpened, { open: openAddTodo, close: closeAddTodo}] = useDisclosure(false)
+    const [editReminderTodo, setEditReminderTodo] = useState<Todo|null>(null)
     const todos = useTodos()
     
     return (
@@ -128,9 +172,12 @@ const InProgress = () => {
             <Modal opened={addTodoOpened} onClose={closeAddTodo} title="Add Todo">
                 <AddTodo todos={todos} close={closeAddTodo} />
             </Modal>
+            <Modal opened={!!editReminderTodo} onClose={() => setEditReminderTodo(null)} title="Remind Me">
+                {editReminderTodo && <SetReminder todo={editReminderTodo} close={() => setEditReminderTodo(null)} />}
+            </Modal>
             <ScrollArea style={{ flex: 1 }}>
                 <Stack>
-                    {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} />)}
+                    {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} editReminder={setEditReminderTodo} />)}
                 </Stack>
             </ScrollArea>
             <Box style={{ flexShrink: 0, borderRadius: 0 }}>
