@@ -47,10 +47,18 @@ func main() {
 		// },
 	})
 
+	scheduler, err := NewScheduler(app)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbService := &DbService{}
+
 	app.RegisterService(
-		application.NewService(&TodoService{
-			app: app,
-		}),
+		application.NewService(dbService),
+	)
+
+	app.RegisterService(
+		application.NewService(NewTodoService(dbService, scheduler, app.Logger)),
 	)
 
 	systray := app.SystemTray.New()
@@ -94,7 +102,7 @@ func main() {
 	}()
 
 	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
+	err = app.Run()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
