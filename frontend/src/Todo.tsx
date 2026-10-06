@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Button, Card, Divider, Flex, Group, Menu, Modal, ScrollArea, Space, Stack, Tabs, Text, Textarea, Typography } from "@mantine/core"
-import { Todo, UseTodos, useTodos } from "./hooks/useTodos"
+import { convertTodoToGo, Todo, UseTodos, useTodos } from "./hooks/useTodos"
 import { useDisclosure } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
@@ -9,6 +9,7 @@ import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/d
 import dayjs, { Dayjs } from "dayjs"
 import weekday from 'dayjs/plugin/weekday'
 import isToday from 'dayjs/plugin/isToday'
+import { UIService } from "../bindings/handydandytray"
 
 dayjs.extend(weekday);
 dayjs.extend(isToday);
@@ -154,6 +155,7 @@ const TodoItem = ({ todo, editReminder = () => { } }: TodoItemParams) => {
                         <Menu.Item leftSection={<PencilIcon size={14} />}>Edit</Menu.Item>
                         <Menu.Divider />
                         <Menu.Item onClick={() => todos.deleteTodo(todo)} color="red" leftSection={<TrashIcon size={14} />}>Remove</Menu.Item>
+                        <Menu.Item onClick={() => UIService.ShowTodoReminder(convertTodoToGo(todo))}>Test Reminder</Menu.Item>
                     </Menu.Dropdown>
                 </Menu>}
                 </Group>

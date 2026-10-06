@@ -7,6 +7,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as uuid$0 from "../uuid/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 export function AddTodo(todo: $models.Todo): $CancellablePromise<void> {
@@ -21,7 +25,7 @@ export function DeleteTodo(todo: $models.Todo): $CancellablePromise<void> {
     return $Call.ByID(2048827770, todo);
 }
 
-export function DeleteTodoById(todoId: string): $CancellablePromise<void> {
+export function DeleteTodoById(todoId: uuid$0.UUID): $CancellablePromise<void> {
     return $Call.ByID(351766894, todoId);
 }
 
@@ -35,6 +39,10 @@ export function GetAllTodos(): $CancellablePromise<$models.Todo[] | null> {
 
 export function GetCompletedTodos(): $CancellablePromise<$models.Todo[] | null> {
     return $Call.ByID(1265103409);
+}
+
+export function GetTodo(id: uuid$0.UUID): $CancellablePromise<$models.Todo | null> {
+    return $Call.ByID(4199289255, id);
 }
 
 export function UpdateTodo(todo: $models.Todo): $CancellablePromise<void> {

@@ -16,6 +16,23 @@ export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt">;
 
 export type NewTodo = Omit<Todo, "id">
 
+export const convertTodoToGo = (todo: Todo): RawTodo => {
+    return transformDatesToGo(todo, ["completedAt", "remindMeAt"])
+}
+
+export const convertTodoFromGo = (todo: RawTodo): Todo => {
+    return transformDatesFromGo(todo, ["completedAt", "remindMeAt"])
+}
+
+export const useTodo = (id?: string) => {
+    return useQuery({
+        queryKey: ['todos', id],         // Re-runs automatically when `id` changes
+        queryFn: () => TodoService.GetTodo(id!),
+        staleTime: 0,                   // Data is immediately stale
+        refetchOnMount: "always",       // Always re-query Go on mount
+        enabled: !!id
+    });
+}
 
 export const useTodos = (completedTodos: boolean = false): UseTodos => {
     const queryClient = useQueryClient();
@@ -38,10 +55,10 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
     // Mutation for updating data
     const createTodoMutation = useMutation({
-        mutationFn: (todo: NewTodo) => TodoService.AddTodo(transformDatesToGo({
+        mutationFn: (todo: NewTodo) => TodoService.AddTodo(convertTodoToGo({
             id: uuidv7(),
             ...todo
-        }, ["completedAt", "remindMeAt", "dueAt"])),
+        })),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKey });
         },
@@ -49,14 +66,14 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
 
     const deleteTodoMutation = useMutation({
-        mutationFn: (todo: Todo) => TodoService.DeleteTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt"])),
+        mutationFn: (todo: Todo) => TodoService.DeleteTodo(convertTodoToGo(todo)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey:queryKey });
         },
     })
 
     const updateTodoMutation = useMutation({
-        mutationFn: (todo: Todo) => TodoService.UpdateTodo(transformDatesToGo(todo, ["completedAt", "remindMeAt"])),
+        mutationFn: (todo: Todo) => TodoService.UpdateTodo(convertTodoToGo(todo)),
         onSuccess: () => {
             // TODO improve this to use current data to know whether we are changing the completion date to move from active to completed or vice-versa
             queryClient.invalidateQueries({ queryKey: ['todos'] });

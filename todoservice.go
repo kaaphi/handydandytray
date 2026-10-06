@@ -18,6 +18,7 @@ type TodoService struct {
 	db        *sql.DB
 	scheduler *Scheduler
 	logger    *slog.Logger
+	notifier  UINotifier
 }
 
 type Todo struct {
@@ -28,11 +29,18 @@ type Todo struct {
 	RemindMeAt  time.Time `json:"remindMeAt,omitzero"`
 }
 
-func NewTodoService(db *DbService, scheduler *Scheduler, logger *slog.Logger) *TodoService {
+type UINotifier interface {
+	ShowTodoReminder(todo Todo)
+}
+
+const todo_job_tag = "todo"
+
+func NewTodoService(db *DbService, scheduler *Scheduler, logger *slog.Logger, notifier UINotifier) *TodoService {
 	return &TodoService{
 		scheduler: scheduler,
 		logger:    logger,
 		dbService: db,
+		notifier:  notifier,
 	}
 }
 
@@ -41,6 +49,17 @@ func (g *TodoService) ServiceStartup(ctx context.Context, options application.Se
 		return errors.New("DB is not initialized!")
 	}
 	g.db = g.dbService.Db
+
+	todos, err := g.GetActiveTodos(ctx)
+
+	if err == nil {
+		for _, todo := range todos {
+			g.updateReminderJob(ctx, todo)
+		}
+	} else {
+		g.logger.Error("Failed to load todos during init!", "error", err)
+	}
+
 	return nil
 }
 
@@ -54,16 +73,18 @@ func (g *TodoService) UpdateTodo(ctx context.Context, todo Todo) error {
 }
 
 func (g *TodoService) DeleteTodo(ctx context.Context, todo Todo) error {
-	return g.DeleteTodoById(ctx, todo.ID.String())
+	return g.DeleteTodoById(ctx, todo.ID)
 }
 
-func (g *TodoService) DeleteTodoById(ctx context.Context, todoId string) error {
+func (g *TodoService) DeleteTodoById(ctx context.Context, todoId uuid.UUID) error {
 	query := `DELETE FROM todos WHERE id = ?`
 
 	_, err := g.db.ExecContext(ctx, query, todoId)
 	if err != nil {
 		return fmt.Errorf("delete todo: %w", err)
 	}
+
+	g.removeReminderJob(ctx, todoId)
 
 	return nil
 }
@@ -76,7 +97,23 @@ func (g *TodoService) DeleteAll(ctx context.Context) error {
 		return fmt.Errorf("delete todos: %w", err)
 	}
 
+	g.scheduler.RemoveAll(todo_job_tag)
+
 	return nil
+}
+
+func (g *TodoService) GetTodo(ctx context.Context, id uuid.UUID) (*Todo, error) {
+	result, err := g.getTodosQuery(ctx, `SELECT json(data) FROM todos WHERE id = ?`, id)
+
+	if len(result) < 1 {
+		return nil, fmt.Errorf("Todo with id %s not found!", id)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &result[0], nil
 }
 
 func (g *TodoService) GetAllTodos(ctx context.Context) ([]Todo, error) {
@@ -134,5 +171,34 @@ func (g *TodoService) addOrUpdateTodo(ctx context.Context, todo Todo, query stri
 		return fmt.Errorf("insert/update todo: %w", err)
 	}
 
+	g.updateReminderJob(ctx, todo)
+
 	return nil
+}
+
+func (g *TodoService) removeReminderJob(ctx context.Context, todoId uuid.UUID) {
+	err := g.scheduler.RemoveJob(todoId)
+	if err != nil {
+		g.logger.Error("Failed to remove Todo reminder!", todoId, "error", err)
+	}
+}
+
+func (g *TodoService) updateReminderJob(ctx context.Context, todo Todo) {
+	g.doRescheduleOrDeleteReminderJob(ctx, todo, false)
+}
+
+func (g *TodoService) doRescheduleOrDeleteReminderJob(ctx context.Context, todo Todo, isDelete bool) {
+	if todo.RemindMeAt.IsZero() || isDelete {
+		g.removeReminderJob(ctx, todo.ID)
+	} else if todo.RemindMeAt.After(time.Now()) {
+		err := g.scheduler.ScheduleOneShot(todo.ID, todo_job_tag, todo.RemindMeAt, func(todo Todo) {
+			g.logger.Info("Triggering reminder for todo", "todo", todo)
+			g.notifier.ShowTodoReminder(todo)
+		}, todo)
+		if err != nil {
+			g.logger.Error("Failed to schedule Todo reminder!", todo, "error", err)
+		}
+	} else {
+		g.logger.Warn("Will not schedule reminder because it is in the past.", "todo", todo)
+	}
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -47,25 +46,39 @@ func main() {
 		// },
 	})
 
-	scheduler, err := NewScheduler(app)
+	scheduler, err := NewScheduler()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	app.OnShutdown(func() {
+		err := scheduler.Shutdown()
+
+		if err != nil {
+			app.Logger.Error("Failed to shutdown scheduler", "error", err)
+		}
+	})
+
 	dbService := &DbService{}
+	uiService := NewUIService(app)
 
 	app.RegisterService(
 		application.NewService(dbService),
 	)
 
 	app.RegisterService(
-		application.NewService(NewTodoService(dbService, scheduler, app.Logger)),
+		application.NewService(uiService),
+	)
+
+	app.RegisterService(
+		application.NewService(NewTodoService(dbService, scheduler, app.Logger, uiService)),
 	)
 
 	systray := app.SystemTray.New()
 
 	menu := app.NewMenu()
-	menu.Add("Settings...").OnClick(func(ctx *application.Context) {
-		openSettingsWindow(app)
+	menu.Add("Todos...").OnClick(func(ctx *application.Context) {
+		uiService.OpenTodosWindow()
 	})
 	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
@@ -108,28 +121,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func openSettingsWindow(app *application.App) {
-	// Focus existing instance if already open
-	if settingsWin, ok := app.Window.GetByName("settings"); ok {
-		settingsWin.Show()
-		settingsWin.Focus()
-		return
-	}
-
-	// Create new window pointing to the /settings route
-	settingsWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:   "settings",
-		Title:  "Preferences",
-		Width:  600,
-		Height: 600,
-		URL:    "/",
-	})
-
-	// This also prevents the application from exiting
-	settingsWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		e.Cancel()         // Stop Wails from destroying the window
-		settingsWin.Hide() // Simply hide it from view
-	})
 }

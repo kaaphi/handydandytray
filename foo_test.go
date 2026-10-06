@@ -9,32 +9,35 @@ import (
 )
 
 func TestFoo(t *testing.T) {
-	ctx := t.Context()
-
-	db, err := InitDB(ctx, "test.db")
+	scheduler, err := NewScheduler()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	todoService := TodoService{
-		db: db,
-	}
+	id := uuid.NewV4()
 
-	err = todoService.UpdateTodo(ctx, Todo{
-		ID:          uuid.MustParse("01a0dfe4-aeac-7acd-a933-639849530273"),
-		Description: "My TODO UPDATED",
-		CompletedAt: time.Now(),
+	err = scheduler.ScheduleOneShot(id, "test", time.Now().Add(10*time.Second), func() {
+		fmt.Println("Job happened!")
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	todos, err := todoService.GetActiveTodos(ctx)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("%+v\n", todos)
+	fmt.Printf("SUCCESS!\n")
+
+	err = scheduler.ScheduleOneShot(id, "test", time.Now().Add(2*time.Second), func() {
+		fmt.Println("Job happened!")
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("SUCCESS!\n")
+
+	time.Sleep(15 * time.Second)
+
+	scheduler.Shutdown()
 }

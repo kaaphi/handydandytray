@@ -21,6 +21,7 @@
     "marked": "^18.0.14",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-router": "^8.4.0",
     "uuid": "^14.0.2"
   },
   "devDependencies": {
