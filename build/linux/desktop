@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A handydandytray application
+Name=Handy Dandy Tray
+Comment=A systray program with handy dandy features.
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/handydandytray.exe %u
+Exec=/usr/local/bin/ %u
 Terminal=false
 Type=Application
-Icon=handydandytray.exe
+Icon=
 Categories=Utility;
-StartupWMClass=handydandytray.exe
+StartupWMClass=
 
  
