@@ -53,6 +53,9 @@ func (g *UIService) createTodoReminderWindow() {
 		Frameless:   true,
 		Hidden:      true,
 		AlwaysOnTop: true,
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar: true,
+		},
 	})
 
 	// This also prevents the application from exiting

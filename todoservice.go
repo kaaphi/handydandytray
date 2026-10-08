@@ -111,32 +111,33 @@ func (g *TodoService) DeleteAll(ctx context.Context) error {
 }
 
 func (g *TodoService) GetTodo(ctx context.Context, id uuid.UUID) (*Todo, error) {
-	result, err := g.getTodosQuery(ctx, `SELECT json(data) FROM todos WHERE id = ?`, id)
-
-	if len(result) < 1 {
-		return nil, fmt.Errorf("Todo with id %s not found!", id)
-	}
+	result, err := g.getTodosQuery(ctx, `WHERE id = ?`, id)
 
 	if err != nil {
 		return nil, err
+	}
+
+	if len(result) < 1 {
+		return nil, fmt.Errorf("Todo with id %s not found!", id)
 	}
 
 	return &result[0], nil
 }
 
 func (g *TodoService) GetAllTodos(ctx context.Context) ([]Todo, error) {
-	return g.getTodosQuery(ctx, `SELECT id, json(data), created_at FROM todos ORDER BY id DESC`)
+	return g.getTodosQuery(ctx, `ORDER BY id DESC`)
 }
 
 func (g *TodoService) GetActiveTodos(ctx context.Context) ([]Todo, error) {
-	return g.getTodosQuery(ctx, `SELECT id, json(data), created_at FROM todos WHERE data->>'$.completedAt' IS NULL ORDER BY id DESC`)
+	return g.getTodosQuery(ctx, `WHERE data->>'$.completedAt' IS NULL ORDER BY id DESC`)
 }
 
 func (g *TodoService) GetCompletedTodos(ctx context.Context) ([]Todo, error) {
-	return g.getTodosQuery(ctx, `SELECT id, json(data), created_at FROM todos WHERE data->>'$.completedAt' IS NOT NULL ORDER BY data->>'$.completedAt' DESC`)
+	return g.getTodosQuery(ctx, `WHERE data->>'$.completedAt' IS NOT NULL ORDER BY data->>'$.completedAt' DESC`)
 }
 
-func (g *TodoService) getTodosQuery(ctx context.Context, query string, args ...any) ([]Todo, error) {
+func (g *TodoService) getTodosQuery(ctx context.Context, afterFromClauses string, args ...any) ([]Todo, error) {
+	query := "SELECT id, json(data), created_at FROM todos " + afterFromClauses
 
 	rows, err := g.db.QueryContext(ctx, query, args...)
 	if err != nil {
