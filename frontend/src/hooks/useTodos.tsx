@@ -1,27 +1,30 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Todo as RawTodo, TodoService } from "../../bindings/handydandytray";
-import { v7 as uuidv7 } from 'uuid';
+import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bindings/handydandytray";
 import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
 
 export type UseTodos = {
     todos: Todo[]
     isLoading: boolean
     error: Error | null
-    createTodo: UseMutateAsyncFunction<void, Error, NewTodo, unknown>
+    createTodo: UseMutateAsyncFunction<void, Error, TodoData, unknown>
     deleteTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
     updateTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
 }
 
-export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt">;
+export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt" | "createdAt">;
 
-export type NewTodo = Omit<Todo, "id">
+export type TodoData = WithDates<RawTodoData, "completedAt" | "remindMeAt">
 
 export const convertTodoToGo = (todo: Todo): RawTodo => {
+    return transformDatesToGo(todo, ["completedAt", "remindMeAt", "createdAt"])
+}
+
+export const convertTodoDataToGo = (todo: TodoData): RawTodoData => {
     return transformDatesToGo(todo, ["completedAt", "remindMeAt"])
 }
 
 export const convertTodoFromGo = (todo: RawTodo): Todo => {
-    return transformDatesFromGo(todo, ["completedAt", "remindMeAt"])
+    return transformDatesFromGo(todo, ["completedAt", "remindMeAt", "createdAt"])
 }
 
 export const useTodo = (id?: string) => {
@@ -46,7 +49,7 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         queryFn: async () => {
             const rawTodos = await queryFunction()
 
-            return rawTodos?.map((todo) => transformDatesFromGo(todo, ["completedAt", "remindMeAt"]))
+            return rawTodos?.map((todo) => convertTodoFromGo(todo))
         },
         //Because only the Todo window is reading and modifying this data, we don't ever have to refresh the cache
         //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
@@ -55,10 +58,7 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
     // Mutation for updating data
     const createTodoMutation = useMutation({
-        mutationFn: (todo: NewTodo) => TodoService.AddTodo(convertTodoToGo({
-            id: uuidv7(),
-            ...todo
-        })),
+        mutationFn: (todo: TodoData) => TodoService.AddTodo(convertTodoDataToGo(todo)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKey });
         },

@@ -9,5 +9,6 @@ export {
 };
 
 export type {
-    Todo
+    Todo,
+    TodoData
 } from "./models.js";

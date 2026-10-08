@@ -2,9 +2,11 @@ package main
 
 import (
 	"embed"
+	"math/rand"
+	"time"
 
 	"log"
-	"time"
+	"uuid"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -61,6 +63,7 @@ func main() {
 
 	dbService := &DbService{}
 	uiService := NewUIService(app)
+	todoService := NewTodoService(dbService, scheduler, app.Logger, uiService)
 
 	app.RegisterService(
 		application.NewService(dbService),
@@ -71,7 +74,7 @@ func main() {
 	)
 
 	app.RegisterService(
-		application.NewService(NewTodoService(dbService, scheduler, app.Logger, uiService)),
+		application.NewService(todoService),
 	)
 
 	systray := app.SystemTray.New()
@@ -80,6 +83,7 @@ func main() {
 	menu.Add("Todos...").OnClick(func(ctx *application.Context) {
 		uiService.OpenTodosWindow()
 	})
+	appendDevMenu(app, menu, todoService)
 	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
@@ -104,16 +108,6 @@ func main() {
 	// 	URL:              "/",
 	// })
 
-	// Create a goroutine that emits an event containing the current time every second.
-	// The frontend can listen to this event and update the UI accordingly.
-	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
-		}
-	}()
-
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
 
@@ -121,4 +115,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func appendDevMenu(app *application.App, menu *application.Menu, todoService *TodoService) {
+	if !app.Env.Info().Debug {
+		return
+	}
+
+	app.Logger.Info("DEV MODE")
+	menu.Add("Trigger Random Reminder").OnClick(func(ctx *application.Context) {
+		todos, err := todoService.GetActiveTodos(app.Context())
+
+		if err != nil {
+			app.Logger.Error("Failed to get TODOs to trigger dev reminder", "error", err)
+			return
+		}
+
+		if len(todos) > 0 {
+			randomIndex := rand.Intn(len(todos))
+
+			todoService.scheduleReminderJob(uuid.NewV7(), todos[randomIndex], time.Now().Add(5*time.Second))
+		} else {
+			app.Logger.Info("No active todos to trigger reminder for")
+		}
+	})
 }

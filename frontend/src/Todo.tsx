@@ -1,19 +1,14 @@
-import { ActionIcon, Box, Button, Card, Divider, Flex, Group, Menu, Modal, ScrollArea, Space, Stack, Tabs, Text, Textarea, Typography } from "@mantine/core"
-import { convertTodoToGo, Todo, UseTodos, useTodos } from "./hooks/useTodos"
-import { useDisclosure } from "@mantine/hooks"
+import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Overlay, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition, Typography } from "@mantine/core"
+import { convertTodoToGo, Todo, useTodos } from "./hooks/useTodos"
+import { useDisclosure, useHover } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates"
 import dayjs, { Dayjs } from "dayjs"
-import weekday from 'dayjs/plugin/weekday'
-import isToday from 'dayjs/plugin/isToday'
 import { UIService } from "../bindings/handydandytray"
-
-dayjs.extend(weekday);
-dayjs.extend(isToday);
-
+import { RelativeTime } from "./lib/dayjs"
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -24,12 +19,18 @@ const convertLinkUrl = (url: string): string => {
     }
 }
 
-const AddTodo = ({ todos, close }: { todos: UseTodos, close: () => void }) => {
+type AddEditTodoParams = {
+    todo?: Todo
+    close: () => void
+}
+
+const AddEditTodo = ({ close, todo }: AddEditTodoParams) => {
+    const todos = useTodos()
     const form = useForm({
         mode: "uncontrolled",
         initialValues: {
-            description: "",
-            dueAt: undefined,
+            description: todo ? todo.description : "",
+            dueAt: todo ? todo.dueAt : undefined,
         },
         validate: {
             description: (value) => value.length > 0 ? null : "Invalid description",
@@ -69,16 +70,23 @@ const AddTodo = ({ todos, close }: { todos: UseTodos, close: () => void }) => {
     }
 
     return <form onSubmit={form.onSubmit((values) => {
-        console.log(values)
-        todos.createTodo(values)
+        console.log("Form submit", values)
+        if (!todo) {
+            todos.createTodo(values)
+        } else {
+            todos.updateTodo({
+                ...todo,
+                ...values,
+            })
+        }
         close()
     })}>
         <Textarea data-autofocus placeholder="description" key={form.key("description")} {...form.getInputProps("description", { type: "input" })} onPaste={handlePaste} ref={textareaRef} />
-        <DateInput key={form.key("dueAt")} placeholder="Due Date" presets={[
+        <DateInput key={form.key("dueAt")} placeholder="due date" presets={[
             { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
             { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
         ]} highlightToday clearable {...form.getInputProps("dueAt", { type: "input" })} />
-        <Button type="submit">Add Todo</Button>
+        <Button type="submit">{todo ? "Save" : "Add Todo"}</Button>
     </form>
 }
 
@@ -121,91 +129,130 @@ const SetReminder = ({ todo, close }: { todo: Todo, close: () => void }) => {
 
 type TodoItemParams = {
     todo: Todo,
-    editReminder?: (todo: Todo) => void
+    editReminder?: (todo: Todo) => void,
+    openEditTodo?: (todo?: Todo) => void,
 }
 
-const TodoItem = ({ todo, editReminder = () => { } }: TodoItemParams) => {
+const TodoItem = ({ todo, editReminder = () => { }, openEditTodo = () => { } }: TodoItemParams) => {
     const isCompleted = !!todo.completedAt
     const todos = useTodos(isCompleted)
+    const { hovered, ref } = useHover();
+    const [ menuOpened, setMenuOpened ] = useState(false)
 
-    return <Card withBorder>
-        
-        <Card.Section style={{ flex: 1 }}>
-            <Typography>
-                <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
-            </Typography>
-            {todo.dueAt && <Text>Due: {dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text>}
-            {todo.remindMeAt && <Text>Remind me: {dayjs(todo.remindMeAt).format("YYYY-MM-DD HH:mm")}</Text>}
-            {todo.completedAt && <Text>Completed: {dayjs(todo.dueAt).format()}</Text>}
-        </Card.Section>
-        <Card.Section>
-            <Group>
-            <Button variant="light" leftSection={isCompleted ? <ArrowUUpLeftIcon size={14} /> : <CheckIcon size={14} />} h={32} onClick={e => {
-                todo.completedAt = isCompleted ? undefined : dayjs()
-                todos.updateTodo(todo)
-            }}>{isCompleted ? "Move to In Progress" : "Complete"}</Button>
-            {!isCompleted && <ActionIcon variant="outline" onClick={() => editReminder(todo)}><ClockIcon size={32} /></ActionIcon>}
-                <Space style={{ flex: 1 }} />
-                {isCompleted && <ActionIcon variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon size={32} /></ActionIcon>}
-                {!isCompleted && <Menu>
+    return <Table.Tr pos="relative" ref={ref} >
+
+        <Table.Td>            
+            <Stack>
+                <Stack gap="xs">
+                {todo.createdAt && <Text c="dimmed" size="xs">Created: {dayjs(todo.createdAt).format("YYYY-MM-DD")}</Text>}
+                {todo.dueAt && <Text c="dimmed" size="xs">Due: {dayjs(todo.dueAt).format("YYYY-MM-DD")}</Text>}
+                {todo.remindMeAt && <Text c="dimmed" size="xs">Remind me: <RelativeTime time={todo.remindMeAt} /></Text>}
+                {todo.completedAt && <Text c="dimmed" size="xs">Completed: {dayjs(todo.completedAt).format()}</Text>}
+                </Stack>
+                <Text>
+                    <Typography>
+                        <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
+                    </Typography>
+                </Text>
+            </Stack>
+
+            <Transition transition="fade" duration={250} mounted={hovered || menuOpened}>
+                {(styles) => (
+                    <Overlay
+                        style={styles}
+                        color="white"
+                        backgroundOpacity={0}
+                        blur={0}
+                        zIndex={10}
+                        radius="md"
+                    >
+                        
+                        <Flex justify="end" align="start">
+                            <Paper shadow="sm" radius="md" withBorder p="xs" mt="1rem" mr="1rem">
+                                <Group>
+                <ActionIcon variant="light" size="sm" onClick={e => {
+                    todo.completedAt = isCompleted ? undefined : dayjs()
+                    todos.updateTodo(todo)
+                }}>{isCompleted ? <ArrowUUpLeftIcon /> : <CheckIcon />}</ActionIcon>
+                {!isCompleted && <ActionIcon size="sm" variant="outline" onClick={() => editReminder(todo)}><ClockIcon /></ActionIcon>}
+                {isCompleted && <ActionIcon size="sm" variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon /></ActionIcon>}
+                {!isCompleted && <Menu onChange={setMenuOpened}>
                     <Menu.Target>
-                        <ActionIcon variant="subtle"><DotsThreeIcon size={32} /></ActionIcon>
+                        <ActionIcon size="sm" variant="subtle"><DotsThreeIcon /></ActionIcon>
                     </Menu.Target>
                     <Menu.Dropdown>
-                        <Menu.Item leftSection={<PencilIcon size={14} />}>Edit</Menu.Item>
+                        <Menu.Item onClick={() => openEditTodo(todo)} leftSection={<PencilIcon />}>Edit</Menu.Item>
                         <Menu.Divider />
-                        <Menu.Item onClick={() => todos.deleteTodo(todo)} color="red" leftSection={<TrashIcon size={14} />}>Remove</Menu.Item>
-                        <Menu.Item onClick={() => UIService.ShowTodoReminder(convertTodoToGo(todo))}>Test Reminder</Menu.Item>
+                        <Menu.Item onClick={() => todos.deleteTodo(todo)} color="red" leftSection={<TrashIcon />}>Remove</Menu.Item>
+                        {import.meta.env.DEV && <Menu.Item onClick={() => UIService.ShowTodoReminder(convertTodoToGo(todo))}>Test Reminder</Menu.Item>}
                     </Menu.Dropdown>
                 </Menu>}
                 </Group>
-        </Card.Section>
-    </Card>
+                </Paper>
+            </Flex>
+                    </Overlay>
+                )}
+            </Transition>
+        </Table.Td>
+    </Table.Tr>
+}
+
+type TodoListParams = {
+    completed?: boolean,
+    todoItemParams?: Partial<TodoItemParams>
+}
+
+const TodoList = ({completed=false, todoItemParams={}} : TodoListParams) => {
+       const todos = useTodos(completed)
+
+    return (
+        <ScrollArea style={{ flex: 1 }}>
+            <Table verticalSpacing="lg" horizontalSpacing="md">
+                {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} {...todoItemParams} />)}
+            </Table>
+        </ScrollArea>
+    )
 }
 
 
-
-const InProgress = () => {
-    const todos = useTodos()
+const InProgress = ({ openEditTodo }: { openEditTodo: (todo?: Todo) => void }) => {
     const [editReminderTodo, setEditReminderTodo] = useState<Todo | null>(null)
-
 
     return (
         <>
             <Modal opened={!!editReminderTodo} onClose={() => setEditReminderTodo(null)} title="Remind Me">
                 {editReminderTodo && <SetReminder todo={editReminderTodo} close={() => setEditReminderTodo(null)} />}
             </Modal>
-            <ScrollArea style={{ flex: 1 }}>
-                <Stack>
-                    {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} editReminder={setEditReminderTodo} />)}
-                </Stack>
-            </ScrollArea>
+            <TodoList todoItemParams={{
+                editReminder: setEditReminderTodo,
+                openEditTodo: openEditTodo,
+            }} />
         </>
     )
 }
 
 const Completed = () => {
-    const todos = useTodos(true)
-
     return (
-        <ScrollArea style={{ flex: 1 }}>
-
-            <Stack>
-                {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} />)}
-            </Stack>
-        </ScrollArea>
+        <TodoList completed={true} />
     )
 }
 
 export const Todos = () => {
-    const [addTodoOpened, { open: openAddTodo, close: closeAddTodo }] = useDisclosure(false)
+    const [todoToEdit, setTodoToEdit] = useState<Todo | undefined>(undefined)
+    const [addTodoOpened, { open: openAddTodoModal, close: closeAddTodo }] = useDisclosure(false)
     const todos = useTodos()
+
+    const openAddEditTodo = useCallback((todo?: Todo) => {
+        setTodoToEdit(todo)
+        openAddTodoModal()
+    }, [openAddTodoModal, setTodoToEdit])
+
 
     return (
         // 1. Root container fills entire window height and prevents global window scrolling
         <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Modal opened={addTodoOpened} onClose={closeAddTodo} title="Add Todo">
-                <AddTodo todos={todos} close={closeAddTodo} />
+            <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
+                <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
             </Modal>
             <Tabs defaultValue="inProgress" keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <Flex justify="space-between" align="center" w="100%">
@@ -218,10 +265,10 @@ export const Todos = () => {
                         </Tabs.Tab>
 
                     </Tabs.List>
-                    <ActionIcon disabled={todos.isLoading} onClick={openAddTodo} ><PlusIcon size={32} /></ActionIcon>
+                    <ActionIcon disabled={todos.isLoading} onClick={() => openAddEditTodo()} ><PlusIcon size={32} /></ActionIcon>
                 </Flex>
                 <Tabs.Panel value="inProgress" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <InProgress />
+                    <InProgress openEditTodo={openAddEditTodo} />
                 </Tabs.Panel>
 
                 <Tabs.Panel value="completed" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

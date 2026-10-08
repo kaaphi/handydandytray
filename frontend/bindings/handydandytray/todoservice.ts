@@ -13,7 +13,7 @@ import * as uuid$0 from "../uuid/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
-export function AddTodo(todo: $models.Todo): $CancellablePromise<void> {
+export function AddTodo(todo: $models.TodoData): $CancellablePromise<void> {
     return $Call.ByID(4097713788, todo);
 }
 

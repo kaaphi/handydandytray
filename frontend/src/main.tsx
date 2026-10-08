@@ -1,15 +1,16 @@
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
 import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DatesProvider } from '@mantine/dates';
 import { HashRouter, Route, Routes } from 'react-router';
 import { Todos } from './Todo';
 import { TodoReminder } from './TodoReminder';
+import './lib/dayjs';
 
 const queryClient = new QueryClient()
 
