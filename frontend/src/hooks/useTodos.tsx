@@ -1,6 +1,7 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bindings/handydandytray";
 import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
+import dayjs, { Dayjs } from "dayjs";
 
 export type UseTodos = {
     todos: Todo[]
@@ -34,6 +35,23 @@ export const useTodo = (id?: string) => {
         staleTime: 0,                   // Data is immediately stale
         refetchOnMount: "always",       // Always re-query Go on mount
         enabled: !!id
+    });
+}
+
+const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): number => {
+    const values = [
+        now.diff(todo.createdAt),
+        todo.remindMeAt?.diff(now),
+        (todo.dueAt ? dayjs(todo.dueAt, "YYYY-MM-DD") : undefined)?.diff(now)
+    ]
+    
+    return Math.min(...values.filter((n): n is number => n !== undefined))
+}
+
+export const sortTodos = (todos: Todo[]): Todo[] => {
+    const now = dayjs()
+    return [...todos].sort((a, b) => {
+        return calculateActiveTodoSortOrder(a, now) - calculateActiveTodoSortOrder(b, now);
     });
 }
 

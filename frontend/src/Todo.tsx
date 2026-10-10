@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition, Typography } from "@mantine/core"
-import { convertTodoToGo, Todo, useTodos } from "./hooks/useTodos"
+import { convertTodoToGo, sortTodos, Todo, useTodos } from "./hooks/useTodos"
 import { useDisclosure, useHover } from "@mantine/hooks"
 import { useForm } from "@mantine/form"
 import { marked } from "marked"
@@ -203,15 +203,18 @@ const TodoItemControls = ({ isActive, todo, editReminder = () => { }, openEditTo
 type TodoListParams = {
     completed?: boolean,
     todoItemParams?: Partial<TodoItemParams>
+    processTodos?: (todos: Todo[]) => Todo[]
 }
 
-const TodoList = ({ completed = false, todoItemParams = {} }: TodoListParams) => {
+const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: TodoListParams) => {
     const todos = useTodos(completed)
+
+    const items = processTodos ? processTodos(todos.todos) : todos.todos
 
     return (
         <ScrollArea style={{ flex: 1 }}>
             <Table verticalSpacing="lg" horizontalSpacing="md">
-                {todos.todos.map((todo) => <TodoItem key={todo.id} todo={todo} {...todoItemParams} />)}
+                {items.map((todo) => <TodoItem key={todo.id} todo={todo} {...todoItemParams} />)}
             </Table>
         </ScrollArea>
     )
@@ -229,7 +232,7 @@ const InProgress = ({ openEditTodo }: { openEditTodo: (todo?: Todo) => void }) =
             <TodoList todoItemParams={{
                 editReminder: setEditReminderTodo,
                 openEditTodo: openEditTodo,
-            }} />
+            }} processTodos={sortTodos} />
         </>
     )
 }
