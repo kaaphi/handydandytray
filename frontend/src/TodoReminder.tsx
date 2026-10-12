@@ -6,6 +6,7 @@ import { useTodo } from "./hooks/useTodos";
 import { useEffect } from "react";
 import { marked } from "marked";
 import PawIcon from './assets/paw-icon.svg?react';
+import { AutoResizeContainer } from "./lib/AutoResizeContainer";
 
 const getPlainTextFromMarkdown = (markdown: string): string => {
     const rawHtml = marked.parse(markdown, { async: false }) as string;
@@ -39,8 +40,9 @@ export const TodoReminder = () => {
         return <></>
     } else {
         return (
+            <AutoResizeContainer>
             <Paper
-                h="100vh"
+                h="fit-content"
                 w="100vw"
                 radius={0}
                 shadow="none"
@@ -64,8 +66,9 @@ export const TodoReminder = () => {
                     <Space style={{ flex: 1 }} />
                     <CloseButton onClick={() => UIService.HideTodoReminder()} size="sm" aria-label="Close window" />
                 </Group>
-                <Text lineClamp={2}>{getPlainTextFromMarkdown(todo.data!.description)}</Text>
+                <Text lineClamp={3}>{getPlainTextFromMarkdown(todo.data!.description)}</Text>
             </Paper>
+            </AutoResizeContainer>
         )
     }
 }

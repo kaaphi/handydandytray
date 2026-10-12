@@ -5,8 +5,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-const TODO_REMINDER_WIDTH = 400
-const TODO_REMINDER_HEIGHT = 150
+type TodoReminderSizeDefaults = int
+
+const (
+	reminder_default_width  TodoReminderSizeDefaults = 400
+	reminder_default_height TodoReminderSizeDefaults = 150
+)
 
 type UIService struct {
 	app *application.App
@@ -41,8 +45,8 @@ func (g *UIService) createTodoReminderWindow() {
 	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:        "todoReminder",
 		Title:       "HandyDandyTray Reminder",
-		Width:       TODO_REMINDER_WIDTH,
-		Height:      TODO_REMINDER_HEIGHT,
+		Width:       reminder_default_width,
+		Height:      reminder_default_height,
 		URL:         "/#/todoReminder",
 		Frameless:   true,
 		Hidden:      true,
@@ -71,11 +75,11 @@ func (g *UIService) OpenTodosWindow() {
 func (g *UIService) ShowTodoReminder(todo Todo) {
 	g.app.Event.Emit("todo:reminder", todo.ID.String())
 
-	screen := g.app.Screen.GetPrimary()
-	x := screen.WorkArea.X + screen.WorkArea.Width - TODO_REMINDER_WIDTH
-	y := screen.WorkArea.Y + screen.WorkArea.Height - TODO_REMINDER_HEIGHT
-
 	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
+		screen := g.app.Screen.GetPrimary()
+		x := screen.WorkArea.X + screen.WorkArea.Width - todoReminder.Width()
+		y := screen.WorkArea.Y + screen.WorkArea.Height - todoReminder.Height()
+
 		todoReminder.SetPosition(x, y)
 		todoReminder.Show()
 		return
