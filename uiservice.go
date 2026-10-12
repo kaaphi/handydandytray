@@ -6,7 +6,7 @@ import (
 )
 
 const TODO_REMINDER_WIDTH = 400
-const TODO_REMINDER_HEIGHT = 100
+const TODO_REMINDER_HEIGHT = 150
 
 type UIService struct {
 	app *application.App
@@ -14,25 +14,19 @@ type UIService struct {
 
 func NewUIService(app *application.App) *UIService {
 	service := &UIService{app: app}
+	service.createTodoWindow()
 	service.createTodoReminderWindow()
 	return service
 }
 
-func (g *UIService) OpenTodosWindow() {
-	// Focus existing instance if already open
-	if todosWin, ok := g.app.Window.GetByName("todos"); ok {
-		todosWin.Show()
-		todosWin.Focus()
-		return
-	}
-
+func (g *UIService) createTodoWindow() {
 	// Create new window pointing to the /todos route
 	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:   "todos",
 		Title:  "Todos",
 		Width:  600,
 		Height: 600,
-		URL:    "/#/todos", //TODO change this when we have multiple windows
+		URL:    "/#/todos",
 	})
 
 	// This also prevents the application from exiting
@@ -63,6 +57,15 @@ func (g *UIService) createTodoReminderWindow() {
 		e.Cancel()      // Stop Wails from destroying the window
 		todosWin.Hide() // Simply hide it from view
 	})
+}
+
+func (g *UIService) OpenTodosWindow() {
+	// Focus existing instance if already open
+	if todosWin, ok := g.app.Window.GetByName("todos"); ok {
+		todosWin.Show()
+		todosWin.Focus()
+		return
+	}
 }
 
 func (g *UIService) ShowTodoReminder(todo Todo) {
