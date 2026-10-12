@@ -1,15 +1,16 @@
-import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, TextProps, Transition, Typography } from "@mantine/core"
-import { convertTodoToGo, sortTodos, Todo, useTodos } from "./hooks/useTodos"
-import { useDisclosure, useHover } from "@mantine/hooks"
-import { useForm } from "@mantine/form"
-import { marked } from "marked"
-import { useCallback, useRef, useState } from "react"
-import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@phosphor-icons/react"
-import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates"
-import dayjs, { Dayjs } from "dayjs"
-import { UIService } from "../bindings/handydandytray"
-import { RelativeTime } from "./lib/dayjs"
-import { TickerProvider } from "./lib/TickerContext"
+import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, TextProps, Transition, Typography } from "@mantine/core";
+import { Events } from '@wailsio/runtime';
+import { convertTodoToGo, sortTodos, Todo, useTodos } from "./hooks/useTodos";
+import { useDisclosure, useHover } from "@mantine/hooks";
+import { useForm } from "@mantine/form";
+import { marked } from "marked";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, InfoIcon, PencilIcon, PlusIcon, TrashIcon, WarningIcon } from "@phosphor-icons/react";
+import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
+import dayjs, { Dayjs } from "dayjs";
+import { UIService } from "../bindings/handydandytray";
+import { RelativeTime } from "./lib/dayjs";
+import { TickerProvider } from "./lib/TickerContext";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -135,15 +136,20 @@ type TodoItemParams = {
     todo: Todo,
     editReminder?: (todo: Todo) => void,
     openEditTodo?: (todo?: Todo) => void,
+    id?: string,
+    isHighlighted: boolean,
 }
 
 
 
 const TodoItem = (params: TodoItemParams) => {
-    const { todo } = params
+    const { todo, id, isHighlighted } = params
     const { hovered, ref } = useHover();
 
-    return <Table.Tr pos="relative" ref={ref} >
+    return <Table.Tr pos="relative" ref={ref} id={id} bg={isHighlighted ? 'var(--mantine-primary-color-0)' : undefined}
+            style={{
+                transition: 'background-color 0.3s ease',
+            }}>
         <Table.Td>
             <Stack>
                 <Group gap="sm">
@@ -215,13 +221,49 @@ type TodoListParams = {
 
 const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: TodoListParams) => {
     const todos = useTodos(completed)
-
     const items = processTodos ? processTodos(todos.todos) : todos.todos
+
+    // State for active highlight + ref to manage timer cleanup
+    const [highlightedId, setHighlightedId] = useState<string | null>(null);
+    const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const scrollToItem = (id: string) => {
+        console.log("Window scroll position:", window.scrollY)
+        const element = document.getElementById(`todo-${id}`);
+        element?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        // Trigger highlight and auto-clear after delay
+        setHighlightedId(id);
+
+        if (highlightTimer.current) clearTimeout(highlightTimer.current);
+        highlightTimer.current = setTimeout(() => {
+            console.log("Clearing highlighted id", highlightedId)
+            setHighlightedId(null);
+        }, 500);
+    };
+
+    useEffect(() => {
+        const unsubscribe = Events.On('todo:reminderClicked', (event) => {
+            const todoId = event.data as string;
+            console.log("Scrolling to todo", todoId)
+            if (todoId) {
+                scrollToItem(todoId)
+            }
+        });
+
+        return () => {
+            if (highlightTimer.current) {
+                console.log("Clearing timeout")
+                clearTimeout(highlightTimer.current);
+            }
+            unsubscribe(); // Clean up listener on unmount
+        };
+    }, [])
 
     return (
         <ScrollArea style={{ flex: 1 }}>
             <Table verticalSpacing="lg" horizontalSpacing="md">
-                {items.map((todo) => <TodoItem key={todo.id} todo={todo} {...todoItemParams} />)}
+                {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
             </Table>
         </ScrollArea>
     )

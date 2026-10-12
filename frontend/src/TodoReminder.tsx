@@ -56,6 +56,9 @@ export const TodoReminder = () => {
                 onClick={() => {
                     UIService.HideTodoReminder()
                     UIService.OpenTodosWindow()
+                    if (todo.data?.id) {
+                        Events.Emit("todo:reminderClicked", todo.data.id);
+                    }
                 }}
             >
                 <Group align="center" mb="xs" style={{ flexShrink: 0 }}>
