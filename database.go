@@ -12,11 +12,18 @@ import (
 
 // This is an "unexported" Wails service just so we can hook into the lifecycle for initializing the DB, etc.
 type DbService struct {
-	Db *sql.DB
+	Db     *sql.DB
+	dbPath string
+}
+
+func NewDbService(dbPath string) *DbService {
+	return &DbService{
+		dbPath: dbPath,
+	}
 }
 
 func (g *DbService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	db, err := initDB(ctx, "test.db")
+	db, err := initDB(ctx, g.dbPath)
 
 	if err == nil {
 		g.Db = db

@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"time"
 
 	"log"
@@ -61,7 +63,7 @@ func main() {
 		}
 	})
 
-	dbService := &DbService{}
+	dbService := NewDbService(getDbPath(app))
 	uiService := NewUIService(app)
 	todoService := NewTodoService(dbService, scheduler, app.Logger, uiService)
 
@@ -114,6 +116,22 @@ func main() {
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func getDbPath(app *application.App) string {
+	if app.Env.Info().Debug {
+		return "test.db"
+	} else {
+		// Get the absolute path of the executable
+		ex, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+
+		exDir := filepath.Dir(ex)
+
+		return filepath.Join(exDir, "handydandy.db")
 	}
 }
 
