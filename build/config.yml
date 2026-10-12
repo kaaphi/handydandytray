@@ -8,7 +8,7 @@ info:
   companyName: "kaaphi.com" # The name of the company
   productName: "Handy Dandy Tray" # The name of the application
   productIdentifier: "com.kaaphi.handydandytray" # The unique product identifier
-  description: "A systray program with handy dandy features." # The application description
+  description: "Handy Dandy Tray" # The application description
   copyright: "(c) 2026, phil kaasa" # Copyright text
   comments: "I hope I'm helpful!" # Comments
   version: "0.0.1" # The application version
