@@ -2,40 +2,46 @@ import dayjs, { Dayjs } from 'dayjs';
 
 import weekday from 'dayjs/plugin/weekday';
 import isToday from 'dayjs/plugin/isToday';
+import isTomorrow from 'dayjs/plugin/isTomorrow';
+import isYesterday from 'dayjs/plugin/isYesterday';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Tooltip } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useTick } from '../hooks/useTicker';
 
-dayjs.extend(weekday);
-dayjs.extend(isToday);
+dayjs.extend(weekday)
+dayjs.extend(isToday)
+dayjs.extend(isTomorrow)
+dayjs.extend(isYesterday)
 dayjs.extend(relativeTime)
+dayjs.extend
 
 export default dayjs
 
-const getOptimalInterval = (date: Dayjs): number => {
-  const diffInMinutes = Math.abs(dayjs().diff(dayjs(date), "minute"));
+type RelativeTimeResolution = "time" | "day"
 
-  if (diffInMinutes < 1) return 10000;    // Under 1 min: update every 10 seconds
-  if (diffInMinutes < 60) return 60000;   // Under 1 hour: update every 1 minute
-  return 3600000;                         // 1+ hours: update every 1 hour
+const formatRelativeTime = (time: Dayjs, resolution: RelativeTimeResolution): string => {
+    switch (resolution) {
+        case "time": return time.fromNow()
+        case "day": if (time.isToday()) {
+            return "Today"
+        } else if (time.isTomorrow()) {
+            return "Tomorrow"
+        } else if (time.isYesterday()) {
+            return "Yesterday"
+        } else {
+            return time.fromNow()
+        }
+        default:
+            throw new Error(`Invalid resolution: ${resolution}!`)
+    }
 }
 
-export const RelativeTime = ({time} : {time : Dayjs}) => {
-    const [relativeText, setRelativeText] = useState(() => time.fromNow());
+export const RelativeTime = ({time, resolution = "time"} : {time : Dayjs, resolution? : RelativeTimeResolution}) => {
+    useTick()
+    
+    const format = resolution === "day" ? "YYYY-MM-DD" : "YYYY-MM-DD HH:mm"
 
-    useEffect(() => {
-        function update() {
-            setRelativeText(time.fromNow());
-        }
-
-        update();
-        const intervalMs = getOptimalInterval(time);
-        const timer = setInterval(update, intervalMs);
-
-        return () => clearInterval(timer);
-    }, [time]);
-
-    return <Tooltip label={time.format("YYYY-MM-DD HH:mm")}>
-        <span>{relativeText}</span>
+    return <Tooltip label={time.format(format)}>
+        <span>{formatRelativeTime(time, resolution)}</span>
     </Tooltip>    
 }
