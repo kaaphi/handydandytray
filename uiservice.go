@@ -31,6 +31,7 @@ func (g *UIService) createTodoWindow() {
 		Width:  600,
 		Height: 600,
 		URL:    "/#/todos",
+		Hidden: true,
 	})
 
 	// This also prevents the application from exiting

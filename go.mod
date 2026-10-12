@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/go-co-op/gocron/v2 v2.22.0
 	github.com/google/uuid v1.6.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.20
+	github.com/wailsapp/wails/v3 v3.0.0-beta.28
 	modernc.org/sqlite v1.58.0
 )
 
