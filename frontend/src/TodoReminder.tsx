@@ -67,7 +67,10 @@ export const TodoReminder = () => {
                         Handy Dandy Reminder
                     </Text>
                     <Space style={{ flex: 1 }} />
-                    <CloseButton onClick={() => UIService.HideTodoReminder()} size="sm" aria-label="Close window" />
+                    <CloseButton onClick={(e) => {
+                        e.stopPropagation()
+                        UIService.HideTodoReminder()}
+                    } size="sm" aria-label="Close window" />
                 </Group>
                 <Text lineClamp={3}>{getPlainTextFromMarkdown(todo.data!.description)}</Text>
             </Paper>

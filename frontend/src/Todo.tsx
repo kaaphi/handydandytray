@@ -1,5 +1,4 @@
 import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, TextProps, Transition, Typography } from "@mantine/core";
-import { Events } from '@wailsio/runtime';
 import { convertTodoToGo, sortTodos, Todo, useTodos } from "./hooks/useTodos";
 import { useDisclosure, useHover } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -11,6 +10,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { UIService } from "../bindings/handydandytray";
 import { RelativeTime } from "./lib/dayjs";
 import { TickerProvider } from "./lib/TickerContext";
+import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -148,7 +148,7 @@ const TodoItem = (params: TodoItemParams) => {
 
     return <Table.Tr pos="relative" ref={ref} id={id} bg={isHighlighted ? 'var(--mantine-primary-color-0)' : undefined}
             style={{
-                transition: 'background-color 0.3s ease',
+                transition: 'background-color 0.5s ease',
             }}>
         <Table.Td>
             <Stack>
@@ -224,7 +224,8 @@ const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: Todo
     const items = processTodos ? processTodos(todos.todos) : todos.todos
 
     // State for active highlight + ref to manage timer cleanup
-    const [highlightedId, setHighlightedId] = useState<string | null>(null);
+    const highlightedId = useTodoNavigationStore((s) => s.targetTodoId)
+    const clearHighlightedId = useTodoNavigationStore((s) => s.clearTargetTodo)
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const scrollToItem = (id: string) => {
@@ -232,23 +233,22 @@ const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: Todo
         const element = document.getElementById(`todo-${id}`);
         element?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-        // Trigger highlight and auto-clear after delay
-        setHighlightedId(id);
-
         if (highlightTimer.current) clearTimeout(highlightTimer.current);
         highlightTimer.current = setTimeout(() => {
             console.log("Clearing highlighted id", highlightedId)
-            setHighlightedId(null);
-        }, 500);
+            clearHighlightedId()
+        }, 1000);
     };
 
     useEffect(() => {
-        const unsubscribe = Events.On('todo:reminderClicked', (event) => {
-            const todoId = event.data as string;
-            console.log("Scrolling to todo", todoId)
-            if (todoId) {
-                scrollToItem(todoId)
-            }
+        if (!highlightedId) {
+            return
+        }
+
+        // requestAnimationFrame ensures the newly mounted DOM elements 
+        // have been painted before querying getElementById
+        const frameId = requestAnimationFrame(() => {
+            scrollToItem(highlightedId)
         });
 
         return () => {
@@ -256,21 +256,27 @@ const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: Todo
                 console.log("Clearing timeout")
                 clearTimeout(highlightTimer.current);
             }
-            unsubscribe(); // Clean up listener on unmount
+
+            cancelAnimationFrame(frameId)
         };
-    }, [])
+    }, [highlightedId, highlightTimer])
 
     return (
         <ScrollArea style={{ flex: 1 }}>
             <Table verticalSpacing="lg" horizontalSpacing="md">
-                {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
+                <Table.Tbody>
+                    {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
+                </Table.Tbody>
             </Table>
         </ScrollArea>
     )
 }
 
+type InProgressProperties = {
+    openEditTodo: (todo?: Todo) => void,
+}
 
-const InProgress = ({ openEditTodo }: { openEditTodo: (todo?: Todo) => void }) => {
+const InProgress = ({ openEditTodo }: InProgressProperties) => {
     const [editReminderTodo, setEditReminderTodo] = useState<Todo | null>(null)
 
     return (
@@ -296,6 +302,8 @@ export const Todos = () => {
     const [todoToEdit, setTodoToEdit] = useState<Todo | undefined>(undefined)
     const [addTodoOpened, { open: openAddTodoModal, close: closeAddTodo }] = useDisclosure(false)
     const todos = useTodos()
+    const activeTab = useTodoNavigationStore((s) => s.activeTab)
+    const setActiveTab = useTodoNavigationStore((s) => s.setActiveTab)
 
     const openAddEditTodo = useCallback((todo?: Todo) => {
         setTodoToEdit(todo)
@@ -310,7 +318,11 @@ export const Todos = () => {
             <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
                 <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
             </Modal>
-            <Tabs defaultValue="inProgress" keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+            <Tabs value={activeTab} onChange={(value) => {
+                if(isTodoTab(value)) {
+                    setActiveTab(value) 
+                }
+            }} keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <Flex justify="space-between" align="center" w="100%">
                     <Tabs.List style={{ flexShrink: 0 }}>
                         <Tabs.Tab value="inProgress">
@@ -323,11 +335,11 @@ export const Todos = () => {
                     </Tabs.List>
                     <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon/>}>Add Todo</Button>
                 </Flex>
-                <Tabs.Panel value="inProgress" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <InProgress openEditTodo={openAddEditTodo} />
                 </Tabs.Panel>
 
-                <Tabs.Panel value="completed" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Tabs.Panel value={TodoTab.completed} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Completed />
                 </Tabs.Panel>
             </Tabs>

@@ -82,14 +82,14 @@ func main() {
 	systray := app.SystemTray.New()
 
 	menu := app.NewMenu()
-	menu.Add("Todos...").OnClick(func(ctx *application.Context) {
-		uiService.OpenTodosWindow()
-	})
 	appendDevMenu(app, menu, todoService)
 	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
 	systray.SetMenu(menu)
+	systray.OnClick(func() {
+		uiService.OpenTodosWindow()
+	})
 
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.

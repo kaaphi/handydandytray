@@ -24,7 +24,8 @@
     "react-router": "^8.4.0",
     "uuid": "^14.0.2",
     "vite-plugin-remove-console": "^2.2.0",
-    "vite-plugin-svgr": "^5.2.0"
+    "vite-plugin-svgr": "^5.2.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
