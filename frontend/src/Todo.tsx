@@ -83,15 +83,17 @@ const AddEditTodo = ({ close, todo }: AddEditTodoParams) => {
         }
         close()
     })}>
-        <Textarea data-autofocus placeholder="description" key={form.key("description")} 
-        {...form.getInputProps("description", { type: "input" })} onPaste={handlePaste} ref={textareaRef} 
-        minRows={3} maxRows={8} autosize
-        />
-        <DateInput key={form.key("dueAt")} placeholder="due date" presets={[
-            { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
-            { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
-        ]} highlightToday clearable {...form.getInputProps("dueAt", { type: "input" })} />
-        <Button type="submit">{todo ? "Save" : "Add Todo"}</Button>
+        <Stack>
+            <Textarea label="Description" data-autofocus key={form.key("description")}
+                {...form.getInputProps("description", { type: "input" })} onPaste={handlePaste} ref={textareaRef}
+                minRows={3} maxRows={8} autosize
+            />
+            <DateInput label="Due Date" key={form.key("dueAt")} presets={[
+                { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
+                { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
+            ]} highlightToday clearable {...form.getInputProps("dueAt", { type: "input" })} />
+            <Button type="submit">{todo ? "Save" : "Add Todo"}</Button>
+        </Stack>
     </form>
 }
 
@@ -147,17 +149,17 @@ const TodoItem = (params: TodoItemParams) => {
     const { hovered, ref } = useHover();
 
     return <Table.Tr pos="relative" ref={ref} id={id} bg={isHighlighted ? 'var(--mantine-primary-color-0)' : undefined}
-            style={{
-                transition: 'background-color 0.5s ease',
-            }}>
+        style={{
+            transition: 'background-color 0.5s ease',
+        }}>
         <Table.Td>
             <Stack>
                 <Group gap="sm">
                     <TodoDateTime time={todo.createdAt} format="date" label="Created on" />
                     {!todo.completedAt && todo.dueAt && <Divider orientation="vertical" />}
-                    <TodoDateTime time={todo.completedAt ? undefined : todo.dueAt } format="relativeDate" label="Due" overdueLabel="Was due" warningType={WarnTypes.dueOnDate}/>
+                    <TodoDateTime time={todo.completedAt ? undefined : todo.dueAt} format="relativeDate" label="Due" overdueLabel="Was due" warningType={WarnTypes.dueOnDate} />
                     {!todo.completedAt && todo.remindMeAt && <Divider orientation="vertical" />}
-                    <TodoDateTime time={todo.completedAt ? undefined : todo.remindMeAt} format="relativeTime" label="Remind me" overdueLabel="Reminder overdue" warningType={WarnTypes.dueAtTime}/>
+                    <TodoDateTime time={todo.completedAt ? undefined : todo.remindMeAt} format="relativeTime" label="Remind me" overdueLabel="Reminder overdue" warningType={WarnTypes.dueAtTime} />
                     {todo.completedAt && <Divider orientation="vertical" />}
                     <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" />
                 </Group>
@@ -314,36 +316,36 @@ export const Todos = () => {
     return (
         // 1. Root container fills entire window height and prevents global window scrolling
         <TickerProvider>
-        <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
-                <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
-            </Modal>
-            <Tabs value={activeTab} onChange={(value) => {
-                if(isTodoTab(value)) {
-                    setActiveTab(value) 
-                }
-            }} keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <Flex justify="space-between" align="center" w="100%">
-                    <Tabs.List style={{ flexShrink: 0 }}>
-                        <Tabs.Tab value="inProgress">
-                            In Progress
-                        </Tabs.Tab>
-                        <Tabs.Tab value="completed">
-                            Completed
-                        </Tabs.Tab>
+            <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
+                    <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
+                </Modal>
+                <Tabs value={activeTab} onChange={(value) => {
+                    if (isTodoTab(value)) {
+                        setActiveTab(value)
+                    }
+                }} keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                    <Flex justify="space-between" align="center" w="100%">
+                        <Tabs.List style={{ flexShrink: 0 }}>
+                            <Tabs.Tab value="inProgress">
+                                In Progress
+                            </Tabs.Tab>
+                            <Tabs.Tab value="completed">
+                                Completed
+                            </Tabs.Tab>
 
-                    </Tabs.List>
-                    <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon/>}>Add Todo</Button>
-                </Flex>
-                <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <InProgress openEditTodo={openAddEditTodo} />
-                </Tabs.Panel>
+                        </Tabs.List>
+                        <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon />}>Add Todo</Button>
+                    </Flex>
+                    <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <InProgress openEditTodo={openAddEditTodo} />
+                    </Tabs.Panel>
 
-                <Tabs.Panel value={TodoTab.completed} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <Completed />
-                </Tabs.Panel>
-            </Tabs>
-        </Box>
+                    <Tabs.Panel value={TodoTab.completed} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <Completed />
+                    </Tabs.Panel>
+                </Tabs>
+            </Box>
         </TickerProvider>
     )
 }
