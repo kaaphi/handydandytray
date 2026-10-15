@@ -6,11 +6,11 @@
 name: ""
 arch: ${GOARCH}
 platform: "linux"
-version: "0.0.1"
+version: "0.0.1-dev"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A systray program with handy dandy features."
+description: "Handy Dandy Tray"
 vendor: "kaaphi.com"
 homepage: "https://wails.io"
 license: "MIT"

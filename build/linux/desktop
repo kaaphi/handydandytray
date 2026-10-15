@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Name=Handy Dandy Tray
-Comment=A systray program with handy dandy features.
+Comment=Handy Dandy Tray
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/ %u
 Terminal=false

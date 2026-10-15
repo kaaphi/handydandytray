@@ -1,12 +1,12 @@
 {
 	"fixed": {
-		"file_version": "0.0.1"
+		"file_version": "0.0.1-dev"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.0.1",
+			"ProductVersion": "0.0.1-dev",
 			"CompanyName": "kaaphi.com",
-			"FileDescription": "A systray program with handy dandy features.",
+			"FileDescription": "Handy Dandy Tray",
 			"LegalCopyright": "(c) 2026, phil kaasa",
 			"ProductName": "Handy Dandy Tray",
 			"Comments": "I hope I'm helpful!"
