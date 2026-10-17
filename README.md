@@ -26,3 +26,13 @@ HandyDandyTray is a system tray service with utilities that I find useful for my
 
 - `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
 - `main.go`: The entry point of the Go backend
+
+## Creating a release
+
+Make sure you are on `main` and are up-to-date. Run the `release:tag` task to create a tag for the next semantic version and push the tag to origin:
+
+```
+wails3 task release:tag
+```
+
+When the tag is pushed up, the Release Application workflow will automatically run to create a release.

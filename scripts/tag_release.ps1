@@ -11,6 +11,20 @@ if (-not (Get-Command "svu" -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Verify the current branch is 'main'
+$currentBranch = (git branch --show-current 2>$null)
+if (-not $currentBranch) {
+    $currentBranch = "detached HEAD"
+} else {
+    $currentBranch = $currentBranch.Trim()
+}
+
+if ($currentBranch -ne "main") {
+    Write-Host "`n[ERROR] Releases can only be tagged from the 'main' branch." -ForegroundColor Red
+    Write-Host "Current branch: '$currentBranch'. Please switch to 'main' before releasing.`n" -ForegroundColor Yellow
+    exit 1
+}
+
 # Get current tag (suppressing stderr if repository has no tags yet)
 $currentTag = (svu current 2>$null)
 if (-not $currentTag) {
