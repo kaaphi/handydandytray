@@ -43,8 +43,8 @@ jobs:
 
           # Replace productVersion in place safely
           $configPath = "build/config.yml"
-          $content = (Get-Content$configPath -Raw) -replace '(productVersion:\s*["'']?)[^"''\r\n]+(["'']?)', "`$1$version`$2"
-          Set-Content -Path $configPath -Value$content
+          $content = (Get-Content $configPath -Raw) -replace '(productVersion:\s*["'']?)[^"''\r\n]+(["'']?)', "`$1$version`$2"
+          Set-Content -Path $configPath -Value $content
 
           # Propagate into platform packaging assets
           wails3 update build-assets
