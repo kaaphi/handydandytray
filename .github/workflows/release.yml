@@ -1,0 +1,66 @@
+name: Release Application
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # Needed to create GitHub Releases
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for changelogs and git history inspection
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Set up Node (for Mantine frontend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Apply Ephemeral Version & Update Assets
+        shell: bash
+        run: |
+          # Strip the 'v' prefix for SemVer compliance (v1.2.0 -> 1.2.0)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Building version: $VERSION"
+
+          # Ephemerally modify build/config.yml without committing
+          yq -i ".info.productVersion = \"$VERSION\"" build/config.yml
+
+          # Propagate version into platform packaging assets
+          wails3 update build-assets
+
+      - name: Install Frontend Dependencies & Package Binary
+        shell: bash
+        run: |
+          # Runs production build
+          wails3 build
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Automatically generates categorized release notes from commits/PRs
+          # Attach your installer/zip from your build directory
+          gh release create "$GITHUB_REF_NAME" \
+            build/bin/* \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
