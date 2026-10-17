@@ -35,19 +35,21 @@ jobs:
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
 
       - name: Apply Ephemeral Version & Update Assets
-        shell: bash
+        shell: pwsh
         run: |
-          # Strip the 'v' prefix for SemVer compliance (v1.2.0 -> 1.2.0)
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "Building version: $VERSION"
+          # Strip leading 'v' (e.g. v1.2.0 -> 1.2.0)
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          Write-Host "Updating build/config.yml to version: $version"
 
-          # Ephemerally modify build/config.yml without committing
-          yq -i ".info.productVersion = \"$VERSION\"" build/config.yml
+          # Replace productVersion in place safely
+          $configPath = "build/config.yml"
+          $content = (Get-Content$configPath -Raw) -replace '(productVersion:\s*["'']?)[^"''\r\n]+(["'']?)', "`$1$version`$2"
+          Set-Content -Path $configPath -Value$content
 
-          # Propagate version into platform packaging assets
+          # Propagate into platform packaging assets
           wails3 update build-assets
 
-      - name: Install Frontend Dependencies & Package Binary
+      - name: Build Binary
         shell: bash
         run: |
           # Runs production build
