@@ -63,3 +63,9 @@ tasks:
     summary: Builds and runs the Docker image
     cmds:
       - task: common:run:docker
+
+  release:tag:
+    summary: Tag a new release
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/tag_release.ps1
+        platforms: [windows]
