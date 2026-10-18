@@ -57,6 +57,12 @@ if ($DryRun) {
     exit 0
 }
 
+$confirmation = Read-Host "Please confirm creating the release? (y/n)"
+if ($confirmation -ne 'y') {
+    Write-Host "Cancelled."
+    exit 0
+}
+
 # Create annotated git tag
 Write-Host "Creating git tag $nextTag..." -ForegroundColor Cyan
 git tag -a "$nextTag" -m "Release $nextTag"
