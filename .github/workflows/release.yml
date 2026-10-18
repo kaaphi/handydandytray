@@ -61,8 +61,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Automatically generates categorized release notes from commits/PRs
-          # Attach your installer/zip from your build directory
+          # Attach the exe from the bin directory
           gh release create "$GITHUB_REF_NAME" \
-            build/bin/* \
+            bin/* \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
