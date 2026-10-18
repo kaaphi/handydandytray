@@ -43,11 +43,11 @@ jobs:
 
           # Replace productVersion in place safely
           $configPath = "build/config.yml"
-          $content = (Get-Content $configPath -Raw) -replace '(productVersion:\s*["'']?)[^"''\r\n]+(["'']?)', "`$1$version`$2"
+          $content = (Get-Content $configPath -Raw) -replace '(?m)^(\s+version:\s*["'']?)[^"''\r\n]+(["'']?)', "`${1}$version`${2}"
           Set-Content -Path $configPath -Value $content
 
           # Propagate into platform packaging assets
-          wails3 update build-assets
+          wails3 update build-assets -name "HandyDandyTray" -config build/config.yml -dir build
 
       - name: Build Binary
         shell: bash
