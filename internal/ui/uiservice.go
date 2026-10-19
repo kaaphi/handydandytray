@@ -20,6 +20,7 @@ func NewUIService(app *application.App) *UIService {
 	service := &UIService{app: app}
 	service.createTodoWindow()
 	service.createTodoReminderWindow()
+	service.createEnterTimeWindow()
 	return service
 }
 
@@ -32,6 +33,25 @@ func (g *UIService) createTodoWindow() {
 		Height: 600,
 		URL:    "/#/todos",
 		Hidden: true,
+	})
+
+	// This also prevents the application from exiting
+	todosWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()      // Stop Wails from destroying the window
+		todosWin.Hide() // Simply hide it from view
+	})
+}
+
+func (g *UIService) createEnterTimeWindow() {
+	// Create new window pointing to the /todos route
+	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:        "entertime",
+		Title:       "Enter Time",
+		Width:       600,
+		Height:      600,
+		URL:         "/#/enterTime",
+		AlwaysOnTop: true,
+		Hidden:      true,
 	})
 
 	// This also prevents the application from exiting
@@ -62,6 +82,21 @@ func (g *UIService) createTodoReminderWindow() {
 		e.Cancel()      // Stop Wails from destroying the window
 		todosWin.Hide() // Simply hide it from view
 	})
+}
+
+func (g *UIService) OpenEnterTimeWindow() {
+	if todosWin, ok := g.app.Window.GetByName("entertime"); ok {
+		g.app.Event.Emit("timetracking:enterTime")
+		todosWin.Show()
+		todosWin.Focus()
+		return
+	}
+}
+
+func (g *UIService) HideEnterTimeWindow() {
+	if todoReminder, ok := g.app.Window.GetByName("entertime"); ok {
+		todoReminder.Hide()
+	}
 }
 
 func (g *UIService) OpenTodosWindow() {

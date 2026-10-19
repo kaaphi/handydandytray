@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter, Route, Routes } from 'react-router';
 import { useTodoNavigationStore } from './hooks/useTodoNavigationStore';
 import { TodoReminder } from './TodoReminder';
+import { EnterTime } from './EnterTime';
 
 function App() {
   const queryClient = new QueryClient()
@@ -38,6 +39,7 @@ function App() {
               <Route path="/todos" element={<Todos />} />
               <Route path="/todoReminder" element={<TodoReminder />} />
               <Route path="/todoReminder/:todoId" element={<TodoReminder />} />
+              <Route path="/enterTime" element={<EnterTime />} />
             </Routes>
           </HashRouter>
         </QueryClientProvider>

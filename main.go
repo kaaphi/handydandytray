@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"handydandytray/internal/services"
+	"handydandytray/internal/timetracking"
 	"handydandytray/internal/todo"
 	"handydandytray/internal/ui"
 	"math/rand"
@@ -58,9 +59,15 @@ func main() {
 		}
 	})
 
+	configService := services.NewConfigService(getPath(app, "config.toml", "test_config.toml"), app.Logger)
 	dbService := services.NewDbService(app.Logger, getDbPath(app))
 	uiService := ui.NewUIService(app)
 	todoService := todo.NewTodoService(dbService, scheduler, app.Logger, uiService)
+	timeTrackingService := timetracking.NewTimeTrackingService(app.Logger, dbService, configService)
+
+	app.RegisterService(
+		application.NewService(configService),
+	)
 
 	app.RegisterService(
 		application.NewService(dbService),
@@ -74,10 +81,18 @@ func main() {
 		application.NewService(todoService),
 	)
 
+	app.RegisterService(
+		application.NewService(timeTrackingService),
+	)
+
 	systray := app.SystemTray.New()
 
 	menu := app.NewMenu()
 	appendDevMenu(app, menu, todoService)
+	menu.Add("Enter Time...").OnClick(func(ctx *application.Context) {
+		uiService.OpenEnterTimeWindow()
+	})
+
 	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
@@ -96,8 +111,12 @@ func main() {
 }
 
 func getDbPath(app *application.App) string {
+	return getPath(app, "handydandy.db", "test.db")
+}
+
+func getPath(app *application.App, prodPath string, devPath string) string {
 	if app.Env.Info().Debug {
-		return "test.db"
+		return devPath
 	} else {
 		// Get the absolute path of the executable
 		ex, err := os.Executable()
@@ -107,7 +126,7 @@ func getDbPath(app *application.App) string {
 
 		exDir := filepath.Dir(ex)
 
-		return filepath.Join(exDir, "handydandy.db")
+		return filepath.Join(exDir, prodPath)
 	}
 }
 

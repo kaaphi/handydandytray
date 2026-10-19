@@ -9,8 +9,16 @@ export function EmitEvent(eventName: string, ...data: any[]): $CancellablePromis
     return $Call.ByID(4144377486, eventName, data);
 }
 
+export function HideEnterTimeWindow(): $CancellablePromise<void> {
+    return $Call.ByID(2825812704);
+}
+
 export function HideTodoReminder(): $CancellablePromise<void> {
     return $Call.ByID(2165657319);
+}
+
+export function OpenEnterTimeWindow(): $CancellablePromise<void> {
+    return $Call.ByID(1745721716);
 }
 
 export function OpenTodosWindow(): $CancellablePromise<void> {

@@ -65,13 +65,27 @@ var schemaVersions = [...]schemaVersion{
 		CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todos(data->>'$.completedAt');
 		`),
 	},
+	{
+		version: 2,
+		migrateAction: createSimpleMigrateAction(`
+		CREATE TABLE IF NOT EXISTS timetracking_intervals (
+			id INTEGER PRIMARY KEY,
+			interval_start DATETIME,
+			interval_end DATETIME,
+			activity TEXT,
+			activity_minutes INTEGER
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_timetracking_interval_start ON timetracking_intervals(interval_start);
+		`),
+	},
 }
 
 // InitDB initializes, configures, and migrates the SQLite database.
 // The returned *sql.DB is safe for concurrent use by all Go services.
 func (g *DbService) initDB(ctx context.Context) error {
 	g.logger.Info("Initializing DB", "path", g.dbPath)
-	db, err := sql.Open("sqlite", g.dbPath)
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_time_format=sqlite&_texttotime", g.dbPath))
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -127,8 +141,6 @@ func (g *DbService) migrateSchema(ctx context.Context) error {
 			if err := g.executeSchemaVersionMigration(ctx, &schemaVersion); err != nil {
 				return err
 			}
-		} else {
-			break
 		}
 	}
 
@@ -154,7 +166,7 @@ func (g *DbService) executeSchemaVersionMigration(ctx context.Context, schemaVer
 	}
 
 	// Update schema version after successful commit
-	if _, err := g.Db.ExecContext(ctx, "PRAGMA user_version = 1;"); err != nil {
+	if _, err := g.Db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d;", schemaVersion.version)); err != nil {
 		return fmt.Errorf("set user_version = %d: %w", schemaVersion.version, err)
 	}
 
