@@ -5,18 +5,18 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as $models from "./models.js";
+export function EmitEvent(eventName: string, ...data: any[]): $CancellablePromise<void> {
+    return $Call.ByID(4144377486, eventName, data);
+}
 
 export function HideTodoReminder(): $CancellablePromise<void> {
-    return $Call.ByID(2412510537);
+    return $Call.ByID(2165657319);
 }
 
 export function OpenTodosWindow(): $CancellablePromise<void> {
-    return $Call.ByID(4116832656);
+    return $Call.ByID(2520781298);
 }
 
-export function ShowTodoReminder(todo: $models.Todo): $CancellablePromise<void> {
-    return $Call.ByID(2625931712, todo);
+export function ShowTodoReminderWindow(): $CancellablePromise<void> {
+    return $Call.ByID(2848781046);
 }

@@ -1,6 +1,6 @@
 import { CloseButton, Group, Paper, Space, Text } from "@mantine/core";
 import { Events } from '@wailsio/runtime';
-import { UIService } from "../bindings/handydandytray";
+import { UIService } from "../bindings/handydandytray/internal/ui";
 import { useNavigate, useParams } from "react-router";
 import { useTodo } from "./hooks/useTodos";
 import { useEffect } from "react";

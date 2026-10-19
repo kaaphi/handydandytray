@@ -1,5 +1,5 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bindings/handydandytray";
+import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bindings/handydandytray/internal/todo";
 import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
 import dayjs, { Dayjs } from "dayjs";
 

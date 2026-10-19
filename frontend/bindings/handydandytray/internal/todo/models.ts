@@ -3,7 +3,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as uuid$0 from "../uuid/models.js";
+import * as uuid$0 from "../../../uuid/models.js";
 
 export interface Todo {
     "id": uuid$0.UUID;

@@ -2,6 +2,9 @@ package main
 
 import (
 	"embed"
+	"handydandytray/internal/services"
+	"handydandytray/internal/todo"
+	"handydandytray/internal/ui"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -50,7 +53,7 @@ func main() {
 		// },
 	})
 
-	scheduler, err := NewScheduler()
+	scheduler, err := services.NewScheduler()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,9 +66,9 @@ func main() {
 		}
 	})
 
-	dbService := NewDbService(app.Logger, getDbPath(app))
-	uiService := NewUIService(app)
-	todoService := NewTodoService(dbService, scheduler, app.Logger, uiService)
+	dbService := services.NewDbService(app.Logger, getDbPath(app))
+	uiService := ui.NewUIService(app)
+	todoService := todo.NewTodoService(dbService, scheduler, app.Logger, uiService)
 
 	app.RegisterService(
 		application.NewService(dbService),
@@ -135,7 +138,7 @@ func getDbPath(app *application.App) string {
 	}
 }
 
-func appendDevMenu(app *application.App, menu *application.Menu, todoService *TodoService) {
+func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService) {
 	if !app.Env.Info().Debug {
 		return
 	}
@@ -152,7 +155,7 @@ func appendDevMenu(app *application.App, menu *application.Menu, todoService *To
 		if len(todos) > 0 {
 			randomIndex := rand.Intn(len(todos))
 
-			todoService.scheduleReminderJob(uuid.NewV7(), todos[randomIndex], time.Now().Add(5*time.Second))
+			todoService.ScheduleReminderJob(uuid.NewV7(), todos[randomIndex], time.Now().Add(5*time.Second))
 		} else {
 			app.Logger.Info("No active todos to trigger reminder for")
 		}
