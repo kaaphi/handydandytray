@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -14,20 +15,18 @@ import (
 type DbService struct {
 	Db     *sql.DB
 	dbPath string
+	logger *slog.Logger
 }
 
-func NewDbService(dbPath string) *DbService {
+func NewDbService(logger *slog.Logger, dbPath string) *DbService {
 	return &DbService{
 		dbPath: dbPath,
+		logger: logger,
 	}
 }
 
 func (g *DbService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	db, err := initDB(ctx, g.dbPath)
-
-	if err == nil {
-		g.Db = db
-	}
+	err := g.initDB(ctx)
 
 	return err
 }
@@ -39,22 +38,50 @@ func (g *DbService) ServiceShutdown() error {
 	return nil
 }
 
-const targetSchemaVersion = 1
+type schemaVersion struct {
+	version       int
+	migrateAction func(ctx context.Context, tx *sql.Tx) error
+}
+
+func createSimpleMigrateAction(schema string) func(ctx context.Context, tx *sql.Tx) error {
+	return func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, schema)
+		return err
+	}
+}
+
+var schemaVersions = [...]schemaVersion{
+	{
+		version: 1,
+		migrateAction: createSimpleMigrateAction(`
+		CREATE TABLE IF NOT EXISTS todos (
+			id TEXT PRIMARY KEY,
+			data BLOB NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
+		-- JSON Index for fast lookups by completed
+		CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todos(data->>'$.completedAt');
+		`),
+	},
+}
 
 // InitDB initializes, configures, and migrates the SQLite database.
 // The returned *sql.DB is safe for concurrent use by all Go services.
-func initDB(ctx context.Context, dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbPath)
+func (g *DbService) initDB(ctx context.Context) error {
+	g.logger.Info("Initializing DB", "path", g.dbPath)
+	db, err := sql.Open("sqlite", g.dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 
-	// 1. Connection Pool Settings
+	// Connection Pool Settings
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(1 * time.Hour)
 
-	// 2. Critical SQLite Concurrency & Performance Settings
+	// Critical SQLite Concurrency & Performance Settings
 	pragmas := []string{
 		"PRAGMA journal_mode = WAL;",   // Enables concurrent reads while writing
 		"PRAGMA synchronous = NORMAL;", // Faster writes, power-loss safe in WAL mode
@@ -65,65 +92,71 @@ func initDB(ctx context.Context, dbPath string) (*sql.DB, error) {
 	for _, pragma := range pragmas {
 		if _, err := db.ExecContext(ctx, pragma); err != nil {
 			db.Close()
-			return nil, fmt.Errorf("apply pragma '%s': %w", pragma, err)
+			return fmt.Errorf("apply pragma '%s': %w", pragma, err)
 		}
 	}
 
-	// 3. Schema Migration
-	if err := migrateSchema(ctx, db); err != nil {
+	g.Db = db
+
+	// Schema Migration
+	if err := g.migrateSchema(ctx); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("migrate schema: %w", err)
+		return fmt.Errorf("migrate schema: %w", err)
 	}
 
-	return db, nil
+	return nil
 }
 
-func migrateSchema(ctx context.Context, db *sql.DB) error {
+func (g *DbService) migrateSchema(ctx context.Context) error {
 	var currentVersion int
-	if err := db.QueryRowContext(ctx, "PRAGMA user_version;").Scan(&currentVersion); err != nil {
+	if err := g.Db.QueryRowContext(ctx, "PRAGMA user_version;").Scan(&currentVersion); err != nil {
 		return fmt.Errorf("get user_version: %w", err)
 	}
 
+	var targetSchemaVersion = schemaVersions[len(schemaVersions)-1].version
+
 	if currentVersion >= targetSchemaVersion {
+		g.logger.Debug("DB schema up-to-date", "currentVersion", currentVersion, "targetVersion", targetSchemaVersion)
 		return nil // Up to date
 	}
 
-	// Version 1 Migration
-	if currentVersion < 1 {
-		tx, err := db.BeginTx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
+	g.logger.Info("DB schema version needs to be upgraded", "currentVersion", currentVersion, "targetVersion", targetSchemaVersion)
 
-		schema := `
-		CREATE TABLE IF NOT EXISTS todos (
-			id TEXT PRIMARY KEY,
-			data BLOB NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-
-		-- JSON Index for fast lookups by completed
-		CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todos(data->>'$.completedAt');
-		`
-
-		if _, err := tx.ExecContext(ctx, schema); err != nil {
-			return fmt.Errorf("exec v1 schema: %w", err)
-		}
-
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("commit v1 migration: %w", err)
-		}
-
-		// Update schema version after successful commit
-		if _, err := db.ExecContext(ctx, "PRAGMA user_version = 1;"); err != nil {
-			return fmt.Errorf("set user_version = 1: %w", err)
+	for _, schemaVersion := range schemaVersions {
+		if currentVersion < schemaVersion.version {
+			if err := g.executeSchemaVersionMigration(ctx, &schemaVersion); err != nil {
+				return err
+			}
+		} else {
+			break
 		}
 	}
 
-	// Add future migrations here:
-	// if currentVersion < 2 { ... }
+	g.logger.Info("Schema version upgrade complete.", "version", targetSchemaVersion)
+
+	return nil
+}
+
+func (g *DbService) executeSchemaVersionMigration(ctx context.Context, schemaVersion *schemaVersion) error {
+	g.logger.Info("Executing schema migration for version", "version", schemaVersion.version)
+	tx, err := g.Db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := schemaVersion.migrateAction(ctx, tx); err != nil {
+		return fmt.Errorf("exec v%d schema: %w", schemaVersion.version, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit v%d migration: %w", schemaVersion.version, err)
+	}
+
+	// Update schema version after successful commit
+	if _, err := g.Db.ExecContext(ctx, "PRAGMA user_version = 1;"); err != nil {
+		return fmt.Errorf("set user_version = %d: %w", schemaVersion.version, err)
+	}
 
 	return nil
 }
