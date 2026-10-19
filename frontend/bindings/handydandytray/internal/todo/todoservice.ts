@@ -7,44 +7,52 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as uuid$0 from "../uuid/models.js";
+import * as uuid$0 from "../../../uuid/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 export function AddTodo(todo: $models.TodoData): $CancellablePromise<void> {
-    return $Call.ByID(4097713788, todo);
+    return $Call.ByID(3182027216, todo);
 }
 
 export function DeleteAll(): $CancellablePromise<void> {
-    return $Call.ByID(2654288625);
+    return $Call.ByID(1509322821);
 }
 
 export function DeleteTodo(todo: $models.Todo): $CancellablePromise<void> {
-    return $Call.ByID(2048827770, todo);
+    return $Call.ByID(3489540518, todo);
 }
 
 export function DeleteTodoById(todoId: uuid$0.UUID): $CancellablePromise<void> {
-    return $Call.ByID(351766894, todoId);
+    return $Call.ByID(3179379426, todoId);
 }
 
 export function GetActiveTodos(): $CancellablePromise<$models.Todo[] | null> {
-    return $Call.ByID(1718883318);
+    return $Call.ByID(3288019458);
 }
 
 export function GetAllTodos(): $CancellablePromise<$models.Todo[] | null> {
-    return $Call.ByID(4237896323);
+    return $Call.ByID(2511079039);
 }
 
 export function GetCompletedTodos(): $CancellablePromise<$models.Todo[] | null> {
-    return $Call.ByID(1265103409);
+    return $Call.ByID(470841701);
 }
 
 export function GetTodo(id: uuid$0.UUID): $CancellablePromise<$models.Todo | null> {
-    return $Call.ByID(4199289255, id);
+    return $Call.ByID(2963730467, id);
+}
+
+export function ScheduleReminderJob(id: uuid$0.UUID, todo: $models.Todo, at: string): $CancellablePromise<void> {
+    return $Call.ByID(3106780857, id, todo, at);
+}
+
+export function ShowTodoReminder(todo: $models.Todo): $CancellablePromise<void> {
+    return $Call.ByID(981355670, todo);
 }
 
 export function UpdateTodo(todo: $models.Todo): $CancellablePromise<void> {
-    return $Call.ByID(2318538620, todo);
+    return $Call.ByID(2366158712, todo);
 }

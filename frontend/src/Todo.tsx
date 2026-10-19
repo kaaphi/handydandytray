@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import dayjs, { Dayjs } from "dayjs";
-import { UIService } from "../bindings/handydandytray";
+import { TodoService } from "../bindings/handydandytray/internal/todo";
 import { TodoDateTime, WarnTypes } from "./lib/TodoDateTime";
 import { TickerProvider } from "./lib/TickerContext";
 import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
@@ -204,7 +204,7 @@ const TodoItemControls = ({ isActive, todo, editReminder = () => { }, openEditTo
                                 <Menu.Item onClick={() => todos.deleteTodo(todo)} color="red" leftSection={<TrashIcon />}>Remove</Menu.Item>
                                 {import.meta.env.DEV && <Menu.Item onClick={() => {
                                     console.log("Showing reminder for", todo)
-                                    UIService.ShowTodoReminder(convertTodoToGo(todo))
+                                    TodoService.ShowTodoReminder(convertTodoToGo(todo))
                                 }}>Test Reminder</Menu.Item>}
                             </Menu.Dropdown>
                         </Menu>}

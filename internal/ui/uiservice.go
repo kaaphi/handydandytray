@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -73,9 +73,7 @@ func (g *UIService) OpenTodosWindow() {
 	}
 }
 
-func (g *UIService) ShowTodoReminder(todo Todo) {
-	g.app.Event.Emit("todo:reminder", todo.ID.String())
-
+func (g *UIService) ShowTodoReminderWindow() {
 	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
 		screen := g.app.Screen.GetPrimary()
 		x := screen.WorkArea.X + screen.WorkArea.Width - todoReminder.Width()
@@ -93,4 +91,8 @@ func (g *UIService) HideTodoReminder() {
 	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
 		todoReminder.Hide()
 	}
+}
+
+func (g *UIService) EmitEvent(eventName string, data ...any) {
+	g.app.Event.Emit(eventName, data...)
 }

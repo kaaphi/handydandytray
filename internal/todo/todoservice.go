@@ -1,4 +1,4 @@
-package main
+package todo
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"handydandytray/internal/services"
 	"log/slog"
 	"time"
 	"uuid"
@@ -14,9 +15,9 @@ import (
 )
 
 type TodoService struct {
-	dbService *DbService
+	dbService *services.DbService
 	db        *sql.DB
-	scheduler *Scheduler
+	scheduler *services.Scheduler
 	logger    *slog.Logger
 	notifier  UINotifier
 }
@@ -35,12 +36,13 @@ type Todo struct {
 }
 
 type UINotifier interface {
-	ShowTodoReminder(todo Todo)
+	ShowTodoReminderWindow()
+	EmitEvent(eventName string, data ...any)
 }
 
 const todo_job_tag = "todo"
 
-func NewTodoService(db *DbService, scheduler *Scheduler, logger *slog.Logger, notifier UINotifier) *TodoService {
+func NewTodoService(db *services.DbService, scheduler *services.Scheduler, logger *slog.Logger, notifier UINotifier) *TodoService {
 	return &TodoService{
 		scheduler: scheduler,
 		logger:    logger,
@@ -204,18 +206,23 @@ func (g *TodoService) doRescheduleOrDeleteReminderJob(todo Todo, isDelete bool) 
 	if todo.RemindMeAt.IsZero() || isDelete {
 		g.removeReminderJob(todo.ID)
 	} else if todo.RemindMeAt.After(time.Now()) {
-		g.scheduleReminderJob(todo.ID, todo, todo.RemindMeAt)
+		g.ScheduleReminderJob(todo.ID, todo, todo.RemindMeAt)
 	} else {
 		g.logger.Warn("Will not schedule reminder because it is in the past.", "todo", todo)
 	}
 }
 
-func (g *TodoService) scheduleReminderJob(id uuid.UUID, todo Todo, at time.Time) {
+func (g *TodoService) ScheduleReminderJob(id uuid.UUID, todo Todo, at time.Time) {
 	err := g.scheduler.ScheduleOneShot(id, todo_job_tag, at, func(todo Todo) {
 		g.logger.Info("Triggering reminder for todo", "todo", todo)
-		g.notifier.ShowTodoReminder(todo)
+		g.ShowTodoReminder(todo)
 	}, todo)
 	if err != nil {
 		g.logger.Error("Failed to schedule Todo reminder!", todo, "error", err)
 	}
+}
+
+func (g *TodoService) ShowTodoReminder(todo Todo) {
+	g.notifier.EmitEvent("todo:reminder", todo.ID.String())
+	g.notifier.ShowTodoReminderWindow()
 }
