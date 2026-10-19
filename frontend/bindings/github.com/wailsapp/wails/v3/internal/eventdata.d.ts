@@ -8,7 +8,8 @@ import type { Events } from "@wailsio/runtime";
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
-            "time": string;
+            "todo:reminder": string;
+            "todo:reminderClicked": string;
         }
     }
 }
