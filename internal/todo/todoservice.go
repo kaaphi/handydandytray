@@ -194,7 +194,7 @@ func (g *TodoService) addOrUpdateTodo(ctx context.Context, todo Todo, query stri
 func (g *TodoService) removeReminderJob(todoId uuid.UUID) {
 	err := g.scheduler.RemoveJob(todoId)
 	if err != nil {
-		g.logger.Error("Failed to remove Todo reminder!", todoId, "error", err)
+		g.logger.Error("Failed to remove Todo reminder!", "todoId", todoId, "error", err)
 	}
 }
 
@@ -218,7 +218,7 @@ func (g *TodoService) ScheduleReminderJob(id uuid.UUID, todo Todo, at time.Time)
 		g.ShowTodoReminder(todo)
 	}, todo)
 	if err != nil {
-		g.logger.Error("Failed to schedule Todo reminder!", todo, "error", err)
+		g.logger.Error("Failed to schedule Todo reminder!", "todo", todo, "error", err)
 	}
 }
 
