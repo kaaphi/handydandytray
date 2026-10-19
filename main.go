@@ -63,7 +63,7 @@ func main() {
 		}
 	})
 
-	dbService := NewDbService(getDbPath(app))
+	dbService := NewDbService(app.Logger, getDbPath(app))
 	uiService := NewUIService(app)
 	todoService := NewTodoService(dbService, scheduler, app.Logger, uiService)
 
