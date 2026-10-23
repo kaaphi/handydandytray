@@ -1,8 +1,7 @@
-import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition, Typography } from "@mantine/core";
+import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
 import { convertTodoToGo, sortTodos, Todo, useTodos } from "./hooks/useTodos";
 import { useDisclosure, useHover } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { marked } from "marked";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
@@ -11,6 +10,7 @@ import { TodoService } from "../bindings/handydandytray/internal/todo";
 import { TodoDateTime, WarnTypes } from "./lib/TodoDateTime";
 import { TickerProvider } from "./lib/TickerContext";
 import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
+import { MarkdownViewer } from "./lib/MarkdownViewer";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -164,9 +164,7 @@ const TodoItem = (params: TodoItemParams) => {
                     <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" />
                 </Group>
                 <Text>
-                    <Typography>
-                        <div dangerouslySetInnerHTML={{ __html: marked.parse(todo.description) }} />
-                    </Typography>
+                    <MarkdownViewer markdown={todo.description} />
                 </Text>
             </Stack>
             <TodoItemControls isActive={hovered} {...params} />
