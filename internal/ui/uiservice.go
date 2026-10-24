@@ -10,6 +10,8 @@ type TodoReminderSizeDefaults = int
 const (
 	reminder_default_width  TodoReminderSizeDefaults = 400
 	reminder_default_height TodoReminderSizeDefaults = 150
+	enter_time_min_width                             = 740
+	enter_time_min_height                            = 340
 )
 
 type UIService struct {
@@ -44,26 +46,28 @@ func (g *UIService) createTodoWindow() {
 
 func (g *UIService) createEnterTimeWindow() {
 	// Create new window pointing to the /todos route
-	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
+	enterTimeWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:        "entertime",
 		Title:       "Enter Time",
-		Width:       600,
-		Height:      600,
+		Width:       enter_time_min_width,
+		Height:      enter_time_min_height,
+		MinWidth:    enter_time_min_width,
+		MinHeight:   enter_time_min_height,
 		URL:         "/#/enterTime",
 		AlwaysOnTop: true,
 		Hidden:      true,
 	})
 
 	// This also prevents the application from exiting
-	todosWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+	enterTimeWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()      // Stop Wails from destroying the window
-		todosWin.Hide() // Simply hide it from view
+		enterTimeWin.Hide() // Simply hide it from view
 	})
 }
 
 func (g *UIService) createTodoReminderWindow() {
 	// Create new window pointing to the /todos route
-	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
+	reminderWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:        "todoReminder",
 		Title:       "HandyDandyTray Reminder",
 		Width:       reminder_default_width,
@@ -78,15 +82,16 @@ func (g *UIService) createTodoReminderWindow() {
 	})
 
 	// This also prevents the application from exiting
-	todosWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+	reminderWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()      // Stop Wails from destroying the window
-		todosWin.Hide() // Simply hide it from view
+		reminderWin.Hide() // Simply hide it from view
 	})
 }
 
 func (g *UIService) OpenEnterTimeWindow() {
 	if todosWin, ok := g.app.Window.GetByName("entertime"); ok {
 		g.app.Event.Emit("timetracking:enterTime")
+		todosWin.SetSize(enter_time_min_width, enter_time_min_height)
 		todosWin.Show()
 		todosWin.Focus()
 		return

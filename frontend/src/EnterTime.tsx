@@ -1,7 +1,7 @@
-import { ActionIcon, Autocomplete, Button, Group, keys, LoadingOverlay, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, Group, LoadingOverlay, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { formRootRule, useForm } from "@mantine/form";
 import { randomId } from "@mantine/hooks";
-import { ArrowsClockwiseIcon, ClockClockwiseIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowsClockwiseIcon, ClockClockwiseIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import dayjs, { Dayjs } from "dayjs";
 import { useEffect, useState, type ReactNode } from "react";
 import { Events } from '@wailsio/runtime';
@@ -157,6 +157,20 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
         dropdownType: "modal"
     }
 
+    const addItem = () => {
+        const index = form.getValues().entries.length;
+        form.insertListItem('entries', {
+            activity: '',
+            duration: '',
+            quantity: 1,
+            key: randomId(),
+        })
+        // DOM isn't ready yet, defer the focus
+        requestAnimationFrame(() => {
+            form.getInputNode(`entries.${index}.activity`)?.focus();
+        });
+    }
+
     return (
         <form onSubmit={form.onSubmit((values) => {
             timetracking.addInterval({
@@ -169,54 +183,44 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
             })
             UIService.HideEnterTimeWindow()
         })} onBlur={syncTransformedValues}>
-            <Group align="start">
-                <Stack>
-                    {entries.map((entry, index) => (
-                        <Group align="start">
-                            <ActionIcon variant="subtle" onClick={() => {
-                                form.removeListItem('entries', index)
+            <Stack align="stretch" justify="space-between" h="100vh" p="xs" >
+                <Group align="start" justify="space-between" >
+                        <Stack>
+                        {entries.map((entry, index) => (
+                            <Group align="start">
+                                <ActionIcon tabIndex={1} variant="subtle" onClick={() => {
+                                    form.removeListItem('entries', index)
+                                    syncTransformedValues()
+                                }}><TrashIcon /></ActionIcon>
+                                <Autocomplete tabIndex={1} key={form.key(`entries.${index}.activity`)} placeholder="Activity" {...form.getInputProps(`entries.${index}.activity`)} data={timetracking.recentActivities ? timetracking.recentActivities : undefined} loading={timetracking.isLoading} />
+                                <TextInput tabIndex={1} key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
+                                <Text w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
+                            </Group>
+                        ))}
+                        {form.errors.entries && (
+                            <Text c="red" mt={5} fz="sm" style={{flexShrink: 0}}>
+                                {form.errors.entries}
+                            </Text>
+                        )}
+                        </Stack>
+                    <Stack>
+                        <Button tabIndex={1} onClick={addItem} variant="outline" leftSection={<PlusIcon />}>Add</Button>
+                        <Text>Remaining: {formatDuration(transformedValues.remainingIntervalMinutes)}</Text>
+                        <DateTimePicker key={form.key("intervalStart")} {...datePickerProps} label="Range Start"
+                            rightSection={<DatePickerButton tooltip={`Reset to ${initialStart.format("YYYY-MM-DD HH:mm")}`} onClick={() => {
+                                form.setFieldValue("intervalStart", initialStart.startOf("minute").format("YYYY-MM-DD HH:mm:ss"))
                                 syncTransformedValues()
-                            }}><TrashIcon /></ActionIcon>
-                            <Autocomplete key={form.key(`entries.${index}.activity`)} placeholder="Activity" {...form.getInputProps(`entries.${index}.activity`)} data={timetracking.recentActivities ? timetracking.recentActivities : undefined} loading={timetracking.isLoading} />
-                            <TextInput key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
-                            <Text w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
-                        </Group>
-                    ))}
-                    {form.errors.entries && (
-                        <Text c="red" mt={5} fz="sm">
-                            {form.errors.entries}
-                        </Text>
-                    )}
-                    <Button onClick={() => {
-                        const index = form.getValues().entries.length;
-                        form.insertListItem('entries', {
-                            activity: '',
-                            duration: '',
-                            quantity: 1,
-                            key: randomId(),
-                        })
-                        // DOM isn't ready yet, defer the focus
-                        requestAnimationFrame(() => {
-                            form.getInputNode(`entries.${index}.activity`)?.focus();
-                        });
-                    }}>Add</Button>
-                    <Button type="submit">Submit</Button>
-                </Stack>
-                <Stack>
-                    <Text>Remaining: {formatDuration(transformedValues.remainingIntervalMinutes)}</Text>
-                    <DateTimePicker key={form.key("intervalStart")} {...datePickerProps} label="Range Start"
-                        rightSection={<DatePickerButton tooltip={`Reset to ${initialStart.format("YYYY-MM-DD HH:mm")}`} onClick={() => {
-                            form.setFieldValue("intervalStart", initialStart.format("YYYY-MM-DD HH:mm:ss"))
-                            syncTransformedValues()
-                        }}><ClockClockwiseIcon /></DatePickerButton>} {...form.getInputProps("intervalStart")} />
-                    <DateTimePicker key={form.key("intervalEnd")} {...datePickerProps} label="Range End"
-                        rightSection={<DatePickerButton tooltip="Update to now" onClick={() => {
-                            form.setFieldValue("intervalEnd", dayjs().format("YYYY-MM-DD HH:mm:ss"))
-                            syncTransformedValues()
-                        }}><ArrowsClockwiseIcon /></DatePickerButton>}
-                        {...form.getInputProps("intervalEnd")} />
-                </Stack>
-            </Group>
+                            }}><ClockClockwiseIcon /></DatePickerButton>} {...form.getInputProps("intervalStart")} />
+                        <DateTimePicker key={form.key("intervalEnd")} {...datePickerProps} label="Range End"
+                            rightSection={<DatePickerButton tooltip="Update to now" onClick={() => {
+                                form.setFieldValue("intervalEnd", dayjs().startOf("minute").format("YYYY-MM-DD HH:mm:ss"))
+                                syncTransformedValues()
+                            }}><ArrowsClockwiseIcon /></DatePickerButton>}
+                            {...form.getInputProps("intervalEnd")} />
+                    </Stack>
+                </Group>
+                <Button type="submit" variant="light">Submit</Button>
+            </Stack>
         </form>
     )
 }
@@ -225,7 +229,7 @@ export const EnterTime = () => {
     const timetracking = useTimeTracking()
     const [sessionKey, setSessionKey] = useState(randomId())
 
-      useEffect(() => {
+    useEffect(() => {
         const unsubscribe = Events.On('timetracking:enterTime', () => {
             setSessionKey(randomId())
         });
@@ -239,7 +243,7 @@ export const EnterTime = () => {
         return <LoadingOverlay visible={timetracking.isLoading} />
     } else {
         return <>
-            <EnterTimeForm key={sessionKey} initialStart={timetracking.latestIntervalEnd || dayjs()} initialEnd={dayjs()} />
+            <EnterTimeForm key={sessionKey} initialStart={(timetracking.latestIntervalEnd || dayjs()).startOf("minute")} initialEnd={dayjs().startOf("minute")} />
         </>
     }
 }
