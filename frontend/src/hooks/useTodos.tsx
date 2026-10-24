@@ -38,20 +38,85 @@ export const useTodo = (id?: string) => {
     });
 }
 
-const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): number => {
-    const values = [
-        now.diff(todo.createdAt),
-        todo.remindMeAt?.diff(now),
-        (todo.dueAt ? dayjs(todo.dueAt, "YYYY-MM-DD") : undefined)?.diff(now)
-    ]
-    
-    return Math.min(...values.filter((n): n is number => n !== undefined))
+type TodoSortDetails = {
+    /**
+     * Raw sort diff millis from now
+     */
+    diff: number
+    /**
+     * Raw days from now
+     */
+    dayDiff: number
+    /**
+     * Sort order within a day
+     */
+    intraDaySort: number
+}
+
+/**
+ * Determine the data used to sort the active Todo. If a todo has either a remind me or due date, we use that with the diff to now (i.e. sort overdue, then soon to be due, then due in the future).
+ * Otherwise, we use the created at time with the diff from now (i.e. sort from most recently created to least recently created).
+ * @param todo the Todo to calculate for
+ * @param now the current time
+ * @returns details for sorting
+ */
+const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): TodoSortDetails => {
+    const startOfDay = now.startOf("day")
+    let min: TodoSortDetails|undefined = undefined
+    if (todo.remindMeAt) {
+        min = {
+            diff: todo.remindMeAt!.diff(now),
+            dayDiff: todo.remindMeAt!.startOf("day").diff(startOfDay, "day"),
+            intraDaySort: 0
+        }
+    }
+    if (todo.dueAt) {
+        const dueDate = dayjs(todo.dueAt, "YYYY-MM-DD")
+        const diff = dueDate.diff(now)
+        if (!min || min.diff > diff) {
+            min = {
+                diff: diff,
+                dayDiff: dueDate.diff(startOfDay, "day"),
+                intraDaySort: 1
+            }
+        }
+    }
+    if (!min) {
+        min = {
+            diff: now.diff(todo.createdAt!),
+            dayDiff: startOfDay.diff(todo.createdAt!.startOf("day")),
+            intraDaySort:2
+        }
+    }
+
+    return min!
+}
+
+/**
+ * Compare two active Todos for sorting. Sort priority: day diff, category of value (remind me first, then due date, finally created at), then raw diff.
+ * @param a first item to compare
+ * @param b second item to compare
+ * @param now the current time
+ * @returns a negative value if the first argument is less than the second argument, zero if they're equal, and a positive value otherwise
+ */
+const compareActiveTodoForSort = (a: Todo, b: Todo, now: Dayjs): number => {
+    const aOrder = calculateActiveTodoSortOrder(a, now)
+    const bOrder = calculateActiveTodoSortOrder(b, now)
+
+    let result = aOrder.dayDiff - bOrder.dayDiff
+    if (result == 0) {
+        result = aOrder.intraDaySort - bOrder.intraDaySort
+        if (result == 0) {
+            result = aOrder.diff - bOrder.diff
+        }
+    }
+    return result
 }
 
 export const sortTodos = (todos: Todo[]): Todo[] => {
     const now = dayjs()
     return [...todos].sort((a, b) => {
-        return calculateActiveTodoSortOrder(a, now) - calculateActiveTodoSortOrder(b, now);
+        return compareActiveTodoForSort(a, b, now);
     });
 }
 
