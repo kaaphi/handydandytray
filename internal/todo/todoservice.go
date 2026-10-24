@@ -14,6 +14,10 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+type UINotifier interface {
+	ShowNotification(notificationType string, props map[string]string)
+}
+
 type TodoService struct {
 	dbService *services.DbService
 	db        *sql.DB
@@ -33,11 +37,6 @@ type Todo struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
 	TodoData
-}
-
-type UINotifier interface {
-	ShowTodoReminderWindow()
-	EmitEvent(eventName string, data ...any)
 }
 
 const todo_job_tag = "todo"
@@ -223,6 +222,7 @@ func (g *TodoService) ScheduleReminderJob(id uuid.UUID, todo Todo, at time.Time)
 }
 
 func (g *TodoService) ShowTodoReminder(todo Todo) {
-	g.notifier.EmitEvent("todo:reminder", todo.ID.String())
-	g.notifier.ShowTodoReminderWindow()
+	g.notifier.ShowNotification("todo", map[string]string{
+		"todoId": todo.ID.String(),
+	})
 }

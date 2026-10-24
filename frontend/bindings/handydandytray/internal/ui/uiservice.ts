@@ -9,14 +9,38 @@ export function EmitEvent(eventName: string, ...data: any[]): $CancellablePromis
     return $Call.ByID(4144377486, eventName, data);
 }
 
+export function HideEnterTimeWindow(): $CancellablePromise<void> {
+    return $Call.ByID(2825812704);
+}
+
+export function HideNotifications(): $CancellablePromise<void> {
+    return $Call.ByID(2000815167);
+}
+
 export function HideTodoReminder(): $CancellablePromise<void> {
     return $Call.ByID(2165657319);
+}
+
+export function OpenEnterTimeWindow(): $CancellablePromise<void> {
+    return $Call.ByID(1745721716);
 }
 
 export function OpenTodosWindow(): $CancellablePromise<void> {
     return $Call.ByID(2520781298);
 }
 
+export function ShowNotification(notificationType: string, props: { [_ in string]?: string } | null): $CancellablePromise<void> {
+    return $Call.ByID(4076913915, notificationType, props);
+}
+
+export function ShowNotificationsWindow(): $CancellablePromise<void> {
+    return $Call.ByID(1294288100);
+}
+
 export function ShowTodoReminderWindow(): $CancellablePromise<void> {
     return $Call.ByID(2848781046);
+}
+
+export function SnoozeEnterTime(): $CancellablePromise<void> {
+    return $Call.ByID(479438218);
 }

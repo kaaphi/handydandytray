@@ -8,7 +8,13 @@ import { marked } from "marked";
 import PawIcon from './assets/paw-icon.svg?react';
 import { AutoResizeContainer } from "./lib/AutoResizeContainer";
 
-const getPlainTextFromMarkdown = (markdown: string): string => {
+//TODO remove this now
+
+const getPlainTextFromMarkdown = (markdown?: string): string => {
+    if (!markdown) {
+        return ""
+    }
+    
     const rawHtml = marked.parse(markdown, { async: false }) as string;
 
     const doc = new DOMParser().parseFromString(rawHtml, 'text/html');

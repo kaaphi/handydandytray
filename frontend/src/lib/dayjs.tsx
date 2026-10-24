@@ -5,6 +5,7 @@ import isToday from 'dayjs/plugin/isToday';
 import isTomorrow from 'dayjs/plugin/isTomorrow';
 import isYesterday from 'dayjs/plugin/isYesterday';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import duration from 'dayjs/plugin/duration'
 import { Tooltip } from '@mantine/core';
 import { useTick } from '../hooks/useTicker';
 
@@ -13,6 +14,7 @@ dayjs.extend(isToday)
 dayjs.extend(isTomorrow)
 dayjs.extend(isYesterday)
 dayjs.extend(relativeTime)
+dayjs.extend(duration)
 dayjs.extend
 
 export default dayjs
@@ -44,4 +46,9 @@ export const RelativeTime = ({time, resolution = "time"} : {time : Dayjs, resolu
     return <Tooltip label={time.format(format)}>
         <span>{formatRelativeTime(time, resolution)}</span>
     </Tooltip>    
+}
+
+export type TimeRange = {
+    start: Dayjs,
+    end: Dayjs,
 }

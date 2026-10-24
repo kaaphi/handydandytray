@@ -12,3 +12,5 @@ build/android/gen/
 
 *.db
 *.db-*
+
+foo_test.go
