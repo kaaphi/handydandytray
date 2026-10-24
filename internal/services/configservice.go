@@ -10,10 +10,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-type ConfigService struct {
-	configPath string
-	logger     *slog.Logger
-	Config     *Config
+type ConfigService interface {
+	Config() *Config
+	Reload() error
 }
 
 type TimeTrackingConfig struct {
@@ -25,18 +24,24 @@ type Config struct {
 	Timetracking TimeTrackingConfig
 }
 
-func NewConfigService(configPath string, logger *slog.Logger) *ConfigService {
-	return &ConfigService{
+type DefaultConfigService struct {
+	configPath string
+	logger     *slog.Logger
+	config     *Config
+}
+
+func NewConfigService(configPath string, logger *slog.Logger) *DefaultConfigService {
+	return &DefaultConfigService{
 		configPath: configPath,
 		logger:     logger,
 	}
 }
 
-func (g *ConfigService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+func (g *DefaultConfigService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	return g.Reload()
 }
 
-func (g *ConfigService) Reload() error {
+func (g *DefaultConfigService) Reload() error {
 	var config Config = Config{
 		Timetracking: TimeTrackingConfig{
 			DefaultCategory:    "default",
@@ -48,7 +53,7 @@ func (g *ConfigService) Reload() error {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			g.logger.Warn("Config file does not exist, using defaul config", "configPath", g.configPath)
-			g.Config = &config
+			g.config = &config
 			return nil
 		}
 		return err
@@ -58,7 +63,29 @@ func (g *ConfigService) Reload() error {
 		return err
 	}
 
-	g.Config = &config
+	g.config = &config
 
+	return nil
+}
+
+func (g *DefaultConfigService) Config() *Config {
+	return g.config
+}
+
+type SimpleConfigService struct {
+	config *Config
+}
+
+func NewSimpleConfigService(config *Config) *SimpleConfigService {
+	return &SimpleConfigService{
+		config: config,
+	}
+}
+
+func (g *SimpleConfigService) Config() *Config {
+	return g.config
+}
+
+func (g *SimpleConfigService) Reload() error {
 	return nil
 }

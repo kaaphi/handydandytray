@@ -16,7 +16,7 @@ type TimeTrackingService struct {
 	logger          *slog.Logger
 	dbService       *services.DbService
 	db              *sql.DB
-	configService   *services.ConfigService
+	configService   ConfigProvider
 	CurrentBaseline time.Time
 }
 
@@ -32,7 +32,11 @@ type DateStats struct {
 	Activities map[string]int
 }
 
-func NewTimeTrackingService(logger *slog.Logger, dbService *services.DbService, configService *services.ConfigService) *TimeTrackingService {
+type ConfigProvider interface {
+	Config() *services.Config
+}
+
+func NewTimeTrackingService(logger *slog.Logger, dbService *services.DbService, configService ConfigProvider) *TimeTrackingService {
 	return &TimeTrackingService{
 		logger:          logger,
 		dbService:       dbService,
@@ -51,7 +55,7 @@ func (g *TimeTrackingService) ServiceStartup(ctx context.Context, options applic
 }
 
 func (g *TimeTrackingService) GetConfig(ctx context.Context) services.TimeTrackingConfig {
-	return g.configService.Config.Timetracking
+	return g.configService.Config().Timetracking
 }
 
 func (g *TimeTrackingService) AddInterval(ctx context.Context, interval *Interval) error {

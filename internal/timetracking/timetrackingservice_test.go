@@ -28,10 +28,12 @@ func TestGroup(t *testing.T) {
 
 	dbService := services.NewDbService(slog.Default(), testDbPath)
 	dbService.ServiceStartup(t.Context(), application.DefaultServiceOptions)
-	service := NewTimeTrackingService(slog.Default(), dbService, &services.TimeTrackingConfig{
-		DefaultCategory:    "default",
-		CategoryActivities: map[string][]string{},
-	})
+	service := NewTimeTrackingService(slog.Default(), dbService, services.NewSimpleConfigService(&services.Config{
+		Timetracking: services.TimeTrackingConfig{
+			DefaultCategory:    "default",
+			CategoryActivities: map[string][]string{},
+		},
+	}))
 	service.ServiceStartup(t.Context(), application.DefaultServiceOptions)
 
 	defer func() {

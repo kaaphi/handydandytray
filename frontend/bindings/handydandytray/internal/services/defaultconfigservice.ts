@@ -5,6 +5,14 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
+export function Config(): $CancellablePromise<$models.Config | null> {
+    return $Call.ByID(1599975796);
+}
+
 export function Reload(): $CancellablePromise<void> {
-    return $Call.ByID(3197156582);
+    return $Call.ByID(2711303423);
 }

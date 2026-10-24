@@ -60,12 +60,16 @@ func main() {
 		}
 	}()
 
-	service := timetracking.NewTimeTrackingService(slog.Default(), dbService, &services.TimeTrackingConfig{
-		DefaultCategory: "work",
-		CategoryActivities: map[string][]string{
-			"non-work": {"staring"},
+	configService := services.NewSimpleConfigService(&services.Config{
+		Timetracking: services.TimeTrackingConfig{
+			DefaultCategory: "work",
+			CategoryActivities: map[string][]string{
+				"non-work": {"staring"},
+			},
 		},
 	})
+
+	service := timetracking.NewTimeTrackingService(slog.Default(), dbService, configService)
 	if err := service.ServiceStartup(context.Background(), application.DefaultServiceOptions); err != nil {
 		log.Fatal(err)
 	}
