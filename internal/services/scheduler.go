@@ -40,6 +40,17 @@ func (g *Scheduler) ScheduleOneShot(id uuid.UUID, tag string, at time.Time, func
 		function, parameters...,
 	)
 
+	return g.schedule(id, tag, jobDefinition, jobTask)
+}
+
+func (g *Scheduler) ScheduleRepeated(id uuid.UUID, tag string, cronExpression string, function any, parameters ...any) error {
+	jobDefinition := gocron.CronJob(cronExpression, false)
+	jobTask := gocron.NewTask(function, parameters...)
+
+	return g.schedule(id, tag, jobDefinition, jobTask)
+}
+
+func (g *Scheduler) schedule(id uuid.UUID, tag string, jobDefinition gocron.JobDefinition, jobTask gocron.Task) error {
 	var err error
 	if g.jobExists(id) {
 		_, err = g.scheduler.Update(guuid.UUID(id),

@@ -1,0 +1,5 @@
+[Timetracking]
+defaultCategory = "work"
+
+[Timetracking.categoryActivities]
+non-work = ["lunch"]
