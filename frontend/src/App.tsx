@@ -6,11 +6,12 @@ import { DatesProvider } from '@mantine/dates';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HashRouter, Route, Routes } from 'react-router';
 import { useTodoNavigationStore } from './hooks/useTodoNavigationStore';
-import { TodoReminder } from './TodoReminder';
 import { EnterTime } from './EnterTime';
 import { Notifications } from './Notifications';
+import { HandyDandyTray } from './HandyDandyTray';
+import { TimeTracking } from './TimeTracking';
 
-function App() {
+export const App = () => {
   const queryClient = new QueryClient()
 
   const navigateToTodo = useTodoNavigationStore((s) => s.navigateToTodo)
@@ -36,10 +37,10 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <HashRouter>
             <Routes>
-              <Route path="/" element={<Todos />} />
-              <Route path="/todos" element={<Todos />} />
-              <Route path="/todoReminder" element={<TodoReminder />} />
-              <Route path="/todoReminder/:todoId" element={<TodoReminder />} />
+              <Route path="/" element={<HandyDandyTray />}>
+                <Route path="/todos" element={<Todos />} />
+                <Route path="/timeTracking" element={<TimeTracking />}/>
+              </Route>
               <Route path="/enterTime" element={<EnterTime />} />
               <Route path="/notifications" element={<Notifications />} />
             </Routes>
@@ -49,5 +50,3 @@ function App() {
     </MantineProvider>
   )
 }
-
-export default App

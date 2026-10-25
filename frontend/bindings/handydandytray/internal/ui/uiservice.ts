@@ -17,16 +17,12 @@ export function HideNotifications(): $CancellablePromise<void> {
     return $Call.ByID(2000815167);
 }
 
-export function HideTodoReminder(): $CancellablePromise<void> {
-    return $Call.ByID(2165657319);
-}
-
 export function OpenEnterTimeWindow(): $CancellablePromise<void> {
     return $Call.ByID(1745721716);
 }
 
-export function OpenTodosWindow(): $CancellablePromise<void> {
-    return $Call.ByID(2520781298);
+export function OpenMainWindow(): $CancellablePromise<void> {
+    return $Call.ByID(3652772136);
 }
 
 export function ShowNotification(notificationType: string, props: { [_ in string]?: string } | null): $CancellablePromise<void> {
@@ -35,10 +31,6 @@ export function ShowNotification(notificationType: string, props: { [_ in string
 
 export function ShowNotificationsWindow(): $CancellablePromise<void> {
     return $Call.ByID(1294288100);
-}
-
-export function ShowTodoReminderWindow(): $CancellablePromise<void> {
-    return $Call.ByID(2848781046);
 }
 
 export function SnoozeEnterTime(): $CancellablePromise<void> {

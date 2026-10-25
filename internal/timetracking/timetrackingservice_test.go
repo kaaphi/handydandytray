@@ -57,6 +57,18 @@ func TestGroup(t *testing.T) {
 			},
 		})
 
-		service.GetTimeTrackingDateStats(t.Context(), startTime, time.Now())
+		result, err := service.GetTimeTrackingDateStats(t.Context(), startTime, time.Now())
+
+		if err != nil {
+			t.Errorf("Failed to get data! %s", err)
+		}
+
+		if len(result) != 1 {
+			t.Errorf("Wrong size!")
+		}
+
+		if result[0].Activities["default"]["stuff"] != 20 {
+			t.Errorf("Bad value!")
+		}
 	})
 }
