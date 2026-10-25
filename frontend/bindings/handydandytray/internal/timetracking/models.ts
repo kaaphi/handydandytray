@@ -3,7 +3,7 @@
 
 export interface DateStats {
     "Date": string;
-    "Activities": { [_ in string]?: number } | null;
+    "Activities": { [_ in string]?: { [_ in string]?: number } | null } | null;
 }
 
 export interface Interval {
