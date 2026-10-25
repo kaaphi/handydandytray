@@ -110,7 +110,8 @@ func (g *UIService) createNotificationWindow() {
 		AlwaysOnTop:    true,
 		BackgroundType: application.BackgroundTypeTransparent,
 		Windows: application.WindowsWindow{
-			HiddenOnTaskbar: true,
+			HiddenOnTaskbar:                   true,
+			DisableFramelessWindowDecorations: true,
 		},
 	})
 

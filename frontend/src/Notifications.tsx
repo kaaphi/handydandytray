@@ -20,13 +20,14 @@ type NotificationContainerProps = {
     removeOnClick?: boolean
 } & InternalNotificationContainerProps
 
-const NotificationContainer = ({ children, title, onClick = () => {}, remove, removeOnClick = false }: NotificationContainerProps) => {
+const NotificationContainer = ({ children, title, onClick = () => { }, remove, removeOnClick = false }: NotificationContainerProps) => {
     return (
         <Paper h="fit-content"
             // w="100vw"
             // radius={0}
-            shadow="xs"
-            p="md"
+            shadow="0"
+            withBorder
+            p="sm"
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -41,17 +42,17 @@ const NotificationContainer = ({ children, title, onClick = () => {}, remove, re
             }}
         >
             <Group align="center" mb="xs" style={{ flexShrink: 0 }}>
-                    <PawIcon width={16} height={16}/>
-                    <Text fw={600} size="sm" c="dimmed">
-                        {title}
-                    </Text>
-                    <Space style={{ flex: 1 }} />
-                    <CloseButton onClick={(e) => {
-                        e.stopPropagation()
-                        remove()
-                    }
-                    } size="sm" aria-label="Close notification" />
-                </Group>
+                <PawIcon width={16} height={16} />
+                <Text fw={600} size="sm" c="dimmed">
+                    {title}
+                </Text>
+                <Space style={{ flex: 1 }} />
+                <CloseButton onClick={(e) => {
+                    e.stopPropagation()
+                    remove()
+                }
+                } size="sm" aria-label="Close notification" />
+            </Group>
             {children}
         </Paper>
     )
@@ -63,7 +64,7 @@ export type NotificationProps = {
     props: Record<string, string>
 }
 
-const TextNotification = ({props, containerProps}: NotificationProps) => {
+const TextNotification = ({ props, containerProps }: NotificationProps) => {
     const [text, setText] = useState("")
 
     useEffect(() => {
@@ -73,17 +74,17 @@ const TextNotification = ({props, containerProps}: NotificationProps) => {
 
         return () => clearTimeout(timeout)
     }, [setText, props])
-    
-    return <NotificationContainer {...containerProps}  title={props.title || "Handy Dandy Notification"}>
+
+    return <NotificationContainer {...containerProps} title={props.title || "Handy Dandy Notification"}>
         <Text>{text}</Text>
     </NotificationContainer>
 }
 
 const getPlainTextFromMarkdown = (markdown?: string): string => {
     if (!markdown) {
-        return ""
+        return "&nbsp;"
     }
-    
+
     const rawHtml = marked.parse(markdown, { async: false }) as string;
 
     const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
@@ -100,14 +101,21 @@ const TodoNotification = ({ props, containerProps }: NotificationProps) => {
         }
     }}>
         <Text lineClamp={3}>{getPlainTextFromMarkdown(todo.data?.description)}</Text>
+
     </NotificationContainer>
 }
 
 const EnterTimeNotification = ({ containerProps }: NotificationProps) => {
-    return <NotificationContainer title="Enter Time" {...containerProps} removeOnClick>
+    return <NotificationContainer title="Enter Time" {...containerProps}>
         <Group justify="center" grow>
-            <Button variant="light" leftSection={<ClockUserIcon />} onClick={UIService.OpenEnterTimeWindow}>Enter Time</Button>
-            <Button variant="outline" leftSection={<BellZIcon />} onClick={UIService.SnoozeEnterTime}>Snooze</Button>
+            <Button variant="light" leftSection={<ClockUserIcon />} onClick={() => {
+                UIService.OpenEnterTimeWindow()
+                containerProps.remove()
+            }}>Enter Time</Button>
+            <Button variant="outline" leftSection={<BellZIcon />} onClick={() => {
+                UIService.SnoozeEnterTime()
+                containerProps.remove()
+            }}>Snooze</Button>
         </Group>
     </NotificationContainer>
 }
@@ -148,7 +156,7 @@ export const Notifications = () => {
             const type: NotificationSpecification = notificationTypes[notificationEvent.type]
 
             if (!type.allowMultiple) {
-                notificationsHandlers.filter((item, _) => 
+                notificationsHandlers.filter((item, _) =>
                     item.type != notificationEvent.type
                 )
             }
@@ -166,17 +174,36 @@ export const Notifications = () => {
         UIService.HideNotifications()
     }
 
-    return <AutoResizeContainer>
-        <Stack gap="0">
-        {notifications.map((notification, index) => {
-            const NotificationComponent = notificationTypes[notification.type].component
+    return (
+        <>
+            {/* This style only exists in the DOM of the window running this route */}
+            <style>{`
+        html,
+        body,
+        #root {
+          background: transparent !important;
+          background-color: transparent !important;
 
-            return <NotificationComponent props={notification.props || {}} containerProps={{
-                remove: () => {
-                    notificationsHandlers.remove(index)                    
-                }
-            }}/>
-        })}
-        </Stack>
-    </AutoResizeContainer>
+          overflow: hidden !important;
+        }
+      `}</style>
+            <AutoResizeContainer growFromTop style={{
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                scrollbarGutter: 'stable', // <-- Reserves space for the scrollbar to prevent layout shifts
+                backgroundColor: 'transparent',
+            }}>
+                <Stack gap="xs" style={{ backgroundColor: 'transparent' }}>
+                    {notifications.map((notification, index) => {
+                        const NotificationComponent = notificationTypes[notification.type].component
+
+                        return <NotificationComponent props={notification.props || {}} containerProps={{
+                            remove: () => {
+                                notificationsHandlers.remove(index)
+                            }
+                        }} />
+                    })}
+                </Stack>
+            </AutoResizeContainer>
+        </>)
 }
