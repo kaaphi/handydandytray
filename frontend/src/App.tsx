@@ -8,6 +8,7 @@ import { HashRouter, Route, Routes } from 'react-router';
 import { useTodoNavigationStore } from './hooks/useTodoNavigationStore';
 import { TodoReminder } from './TodoReminder';
 import { EnterTime } from './EnterTime';
+import { Notifications } from './Notifications';
 
 function App() {
   const queryClient = new QueryClient()
@@ -40,6 +41,7 @@ function App() {
               <Route path="/todoReminder" element={<TodoReminder />} />
               <Route path="/todoReminder/:todoId" element={<TodoReminder />} />
               <Route path="/enterTime" element={<EnterTime />} />
+              <Route path="/notifications" element={<Notifications />} />
             </Routes>
           </HashRouter>
         </QueryClientProvider>

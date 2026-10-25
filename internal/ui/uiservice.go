@@ -1,6 +1,11 @@
 package ui
 
 import (
+	"context"
+	"handydandytray/internal/services"
+	"time"
+	"uuid"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -15,19 +20,26 @@ const (
 )
 
 type UIService struct {
-	app *application.App
+	app       *application.App
+	scheduler *services.Scheduler
 }
 
-func NewUIService(app *application.App) *UIService {
-	service := &UIService{app: app}
+func NewUIService(app *application.App, scheduler *services.Scheduler) *UIService {
+	service := &UIService{app: app, scheduler: scheduler}
 	service.createTodoWindow()
 	service.createTodoReminderWindow()
 	service.createEnterTimeWindow()
+	service.createNotificationWindow()
 	return service
 }
 
+func (g *UIService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
+	return g.scheduler.ScheduleRepeated(uuid.New(), "entertime", "0 * * * *", func() {
+		g.ShowNotification("enterTime", map[string]string{})
+	})
+}
+
 func (g *UIService) createTodoWindow() {
-	// Create new window pointing to the /todos route
 	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:   "todos",
 		Title:  "Todos",
@@ -45,7 +57,6 @@ func (g *UIService) createTodoWindow() {
 }
 
 func (g *UIService) createEnterTimeWindow() {
-	// Create new window pointing to the /todos route
 	enterTimeWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:        "entertime",
 		Title:       "Enter Time",
@@ -60,13 +71,12 @@ func (g *UIService) createEnterTimeWindow() {
 
 	// This also prevents the application from exiting
 	enterTimeWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		e.Cancel()      // Stop Wails from destroying the window
+		e.Cancel()          // Stop Wails from destroying the window
 		enterTimeWin.Hide() // Simply hide it from view
 	})
 }
 
 func (g *UIService) createTodoReminderWindow() {
-	// Create new window pointing to the /todos route
 	reminderWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:        "todoReminder",
 		Title:       "HandyDandyTray Reminder",
@@ -83,7 +93,30 @@ func (g *UIService) createTodoReminderWindow() {
 
 	// This also prevents the application from exiting
 	reminderWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		e.Cancel()      // Stop Wails from destroying the window
+		e.Cancel()         // Stop Wails from destroying the window
+		reminderWin.Hide() // Simply hide it from view
+	})
+}
+
+func (g *UIService) createNotificationWindow() {
+	reminderWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:           "notifications",
+		Title:          "HandyDandyTray Reminder",
+		Width:          reminder_default_width,
+		Height:         reminder_default_height,
+		URL:            "/#/notifications",
+		Frameless:      true,
+		Hidden:         true,
+		AlwaysOnTop:    true,
+		BackgroundType: application.BackgroundTypeTransparent,
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar: true,
+		},
+	})
+
+	// This also prevents the application from exiting
+	reminderWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		e.Cancel()         // Stop Wails from destroying the window
 		reminderWin.Hide() // Simply hide it from view
 	})
 }
@@ -127,12 +160,49 @@ func (g *UIService) ShowTodoReminderWindow() {
 	g.app.Logger.Error("No todo reminder window to display!")
 }
 
+func (g *UIService) ShowNotificationsWindow() {
+	if notifications, ok := g.app.Window.GetByName("notifications"); ok {
+		screen := g.app.Screen.GetPrimary()
+		x := screen.WorkArea.X + screen.WorkArea.Width - notifications.Width()
+		y := screen.WorkArea.Y + screen.WorkArea.Height - notifications.Height()
+
+		notifications.SetPosition(x, y)
+		notifications.Show()
+		return
+	}
+
+	g.app.Logger.Error("No notifications window to display!")
+}
+
 func (g *UIService) HideTodoReminder() {
 	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
 		todoReminder.Hide()
 	}
 }
 
+func (g *UIService) HideNotifications() {
+	if todoReminder, ok := g.app.Window.GetByName("notifications"); ok {
+		todoReminder.Hide()
+	}
+}
+
 func (g *UIService) EmitEvent(eventName string, data ...any) {
 	g.app.Event.Emit(eventName, data...)
+}
+
+func (g *UIService) ShowNotification(notificationType string, props map[string]string) {
+	g.app.Event.Emit("notification:showNotification", map[string]interface{}{
+		"type":  notificationType,
+		"props": props,
+	})
+}
+
+func (g *UIService) SnoozeEnterTime() {
+	err := g.scheduler.ScheduleOneShot(uuid.New(), "entertime", time.Now().Add(5*time.Minute), func() {
+		g.ShowNotification("enterTime", map[string]string{})
+	})
+
+	if err != nil {
+		g.app.Logger.Error("Failed to snooze enter time!", "error", err)
+	}
 }

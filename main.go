@@ -61,7 +61,7 @@ func main() {
 
 	configService := services.NewConfigService(getPath(app, "config.toml", "test_config.toml"), app.Logger)
 	dbService := services.NewDbService(app.Logger, getDbPath(app))
-	uiService := ui.NewUIService(app)
+	uiService := ui.NewUIService(app, scheduler)
 	todoService := todo.NewTodoService(dbService, scheduler, app.Logger, uiService)
 	timeTrackingService := timetracking.NewTimeTrackingService(app.Logger, dbService, configService)
 
@@ -88,7 +88,7 @@ func main() {
 	systray := app.SystemTray.New()
 
 	menu := app.NewMenu()
-	appendDevMenu(app, menu, todoService)
+	appendDevMenu(app, menu, todoService, uiService)
 	menu.Add("Enter Time...").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
 	})
@@ -130,7 +130,7 @@ func getPath(app *application.App, prodPath string, devPath string) string {
 	}
 }
 
-func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService) {
+func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService, uiService *ui.UIService) {
 	if !app.Env.Info().Debug {
 		return
 	}

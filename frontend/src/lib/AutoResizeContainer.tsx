@@ -2,7 +2,7 @@ import { Window } from "@wailsio/runtime";
 import { useEffect, useRef } from "react";
 
 interface AutoResizeContainerProps {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     width?: number;
     maxHeight?: number;
 }
@@ -23,7 +23,10 @@ export function AutoResizeContainer({
 
         const observer = new ResizeObserver(async () => {
             //logic in here is more complicated because windows likes to grow from the bottom instead of from the top
-            const newHeight = Math.min(el.offsetHeight, maxHeight);
+            const rect = el.getBoundingClientRect();
+            const exactHeight = Math.ceil(rect.height);
+
+            const newHeight = Math.min(exactHeight, maxHeight);
             if (newHeight === lastHeight || newHeight === 0) return;
 
             // Get current window coordinates and dimensions
@@ -35,6 +38,7 @@ export function AutoResizeContainer({
             const newY = currentY - heightDelta;
 
             // Apply new size and reposition
+            console.log("Setting size to", width, newHeight)
             await Window.SetSize(width, newHeight);
             await Window.SetPosition(currentX, newY);
 
@@ -52,6 +56,9 @@ export function AutoResizeContainer({
                 width: `${width}px`,
                 maxHeight: `${maxHeight}px`,
                 height: 'fit-content', // Sizes container to content up to maxHeight
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                // scrollbarGutter: 'stable', // <-- Reserves space for the scrollbar to prevent layout shifts
                 boxSizing: 'border-box',
             }}
         >
