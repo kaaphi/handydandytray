@@ -89,11 +89,11 @@ func main() {
 
 	menu := app.NewMenu()
 	appendDevMenu(app, menu, todoService, uiService)
-	menu.Add("Enter Time...").OnClick(func(ctx *application.Context) {
+	menu.Add("Enter Time Now").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
 	})
 
-	menu.Add("Quit").OnClick(func(ctx *application.Context) {
+	menu.Add("Quit Handy Dandy Tray").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
 	systray.SetMenu(menu)
