@@ -27,7 +27,6 @@ type UIService struct {
 func NewUIService(app *application.App, scheduler *services.Scheduler) *UIService {
 	service := &UIService{app: app, scheduler: scheduler}
 	service.createTodoWindow()
-	service.createTodoReminderWindow()
 	service.createEnterTimeWindow()
 	service.createNotificationWindow()
 	return service
@@ -73,28 +72,6 @@ func (g *UIService) createEnterTimeWindow() {
 	enterTimeWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()          // Stop Wails from destroying the window
 		enterTimeWin.Hide() // Simply hide it from view
-	})
-}
-
-func (g *UIService) createTodoReminderWindow() {
-	reminderWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:        "todoReminder",
-		Title:       "HandyDandyTray Reminder",
-		Width:       reminder_default_width,
-		Height:      reminder_default_height,
-		URL:         "/#/todoReminder",
-		Frameless:   true,
-		Hidden:      true,
-		AlwaysOnTop: true,
-		Windows: application.WindowsWindow{
-			HiddenOnTaskbar: true,
-		},
-	})
-
-	// This also prevents the application from exiting
-	reminderWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		e.Cancel()         // Stop Wails from destroying the window
-		reminderWin.Hide() // Simply hide it from view
 	})
 }
 
@@ -145,20 +122,6 @@ func (g *UIService) OpenTodosWindow() {
 		todosWin.Focus()
 		return
 	}
-}
-
-func (g *UIService) ShowTodoReminderWindow() {
-	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
-		screen := g.app.Screen.GetPrimary()
-		x := screen.WorkArea.X + screen.WorkArea.Width - todoReminder.Width()
-		y := screen.WorkArea.Y + screen.WorkArea.Height - todoReminder.Height()
-
-		todoReminder.SetPosition(x, y)
-		todoReminder.Show()
-		return
-	}
-
-	g.app.Logger.Error("No todo reminder window to display!")
 }
 
 func (g *UIService) ShowNotificationsWindow() {

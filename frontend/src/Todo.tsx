@@ -1,17 +1,17 @@
 import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
 import { sortTodos, Todo, useTodos } from "./hooks/useTodos";
-import { randomId, useDisclosure, useHover } from "@mantine/hooks";
+import { useDisclosure, useHover } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUUpLeftIcon, BugIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import dayjs, { Dayjs } from "dayjs";
 import { TodoDateTime, WarnTypes } from "./lib/TodoDateTime";
 import { TickerProvider } from "./lib/TickerContext";
 import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
 import { MarkdownViewer } from "./lib/MarkdownViewer";
-import { Events } from '@wailsio/runtime';
-import { NotificationEventData } from "./Notifications";
+
+import { triggerNotification } from "./lib/notifications";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -303,41 +303,6 @@ const Completed = () => {
     )
 }
 
-
-const triggerNotification = (event: NotificationEventData) => {
-    Events.Emit("notification:showNotification", event)
-}
-
-const DevMenu = () => {
-    if (import.meta.env.DEV) {
-        return (
-        <Menu>
-            <Menu.Target>
-                <ActionIcon size="sm" variant="subtle"><BugIcon /></ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-                <Menu.Item onClick={() =>
-                    triggerNotification({
-                        type: "text",
-                        props: {
-                            title: `Text Notification ${randomId()}`,
-                            text: randomId()
-                        }
-                    })
-                }>Trigger Text Notification</Menu.Item>
-                <Menu.Item onClick={() =>
-                    triggerNotification({
-                        type: "enterTime"
-                    })
-                }>Trigger Enter Time</Menu.Item>
-            </Menu.Dropdown>
-        </Menu>
-        )
-    } else {
-        return null
-    }
-}
-
 export const Todos = () => {
     const [todoToEdit, setTodoToEdit] = useState<Todo | undefined>(undefined)
     const [addTodoOpened, { open: openAddTodoModal, close: closeAddTodo }] = useDisclosure(false)
@@ -374,7 +339,6 @@ export const Todos = () => {
 
                         </Tabs.List>
                         <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon />}>Add Todo</Button>
-                        <DevMenu />
                     </Flex>
                     <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         <InProgress openEditTodo={openAddEditTodo} />

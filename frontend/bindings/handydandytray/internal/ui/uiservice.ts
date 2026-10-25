@@ -37,10 +37,6 @@ export function ShowNotificationsWindow(): $CancellablePromise<void> {
     return $Call.ByID(1294288100);
 }
 
-export function ShowTodoReminderWindow(): $CancellablePromise<void> {
-    return $Call.ByID(2848781046);
-}
-
 export function SnoozeEnterTime(): $CancellablePromise<void> {
     return $Call.ByID(479438218);
 }
