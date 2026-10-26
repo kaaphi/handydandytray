@@ -8,6 +8,7 @@ import { UIService } from "../bindings/handydandytray/internal/ui";
 import { useTodo } from "./hooks/useTodos";
 import { marked } from "marked";
 import { BellZIcon, ClockUserIcon } from "@phosphor-icons/react";
+import { usePulseBackground } from "./hooks/usePulseBackground";
 
 type InternalNotificationContainerProps = {
     remove: () => void
@@ -18,11 +19,16 @@ type NotificationContainerProps = {
     title: string
     onClick?: () => void
     removeOnClick?: boolean
+    withPulse?: boolean
 } & InternalNotificationContainerProps
 
-const NotificationContainer = ({ children, title, onClick = () => { }, remove, removeOnClick = false }: NotificationContainerProps) => {
+const NotificationContainer = ({ children, title, onClick = () => { }, remove, removeOnClick = false, withPulse = false }: NotificationContainerProps) => {
+    const pulseRef = usePulseBackground()
+    
     return (
-        <Paper h="fit-content"
+        <Paper 
+            ref={withPulse ? pulseRef : null}
+            h="fit-content"
             // w="100vw"
             // radius={0}
             shadow="0"
@@ -106,7 +112,7 @@ const TodoNotification = ({ props, containerProps }: NotificationProps) => {
 }
 
 const EnterTimeNotification = ({ containerProps }: NotificationProps) => {
-    return <NotificationContainer title="Enter Time" {...containerProps}>
+    return <NotificationContainer withPulse title="Enter Time" {...containerProps}>
         <Group justify="center" grow>
             <Button variant="light" leftSection={<ClockUserIcon />} onClick={() => {
                 UIService.OpenEnterTimeWindow()

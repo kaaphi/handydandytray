@@ -154,7 +154,8 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
 
     const datePickerProps: DateTimePickerProps = {
         highlightToday: true,
-        dropdownType: "modal"
+        dropdownType: "modal",
+        valueFormat: "YYYY/MM/DD HH:mm",
     }
 
     const addItem = () => {
@@ -184,7 +185,7 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
             UIService.HideEnterTimeWindow()
         })} onBlur={syncTransformedValues}>
             <Stack align="stretch" justify="space-between" h="100vh" p="xs" >
-                <Group align="start" justify="space-between" >
+                <Group align="start" justify="space-between" wrap="nowrap">
                         <Stack>
                         {entries.map((entry, index) => (
                             <Group align="start">
@@ -192,7 +193,7 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
                                     form.removeListItem('entries', index)
                                     syncTransformedValues()
                                 }}><TrashIcon /></ActionIcon>
-                                <Autocomplete tabIndex={1} key={form.key(`entries.${index}.activity`)} placeholder="Activity" {...form.getInputProps(`entries.${index}.activity`)} data={timetracking.recentActivities ? timetracking.recentActivities : undefined} loading={timetracking.isLoading} />
+                                <Autocomplete autoFocus={index==0} tabIndex={1} key={form.key(`entries.${index}.activity`)} placeholder="Activity" {...form.getInputProps(`entries.${index}.activity`)} data={timetracking.recentActivities ? timetracking.recentActivities : undefined} loading={timetracking.isLoading} />
                                 <TextInput tabIndex={1} key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
                                 <Text w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
                             </Group>
@@ -219,7 +220,7 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
                             {...form.getInputProps("intervalEnd")} />
                     </Stack>
                 </Group>
-                <Button type="submit" variant="light">Submit</Button>
+                <Button tabIndex={1} type="submit" variant="light">Submit</Button>
             </Stack>
         </form>
     )

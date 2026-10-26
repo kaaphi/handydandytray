@@ -2,6 +2,7 @@ import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@
 import { DateStats, Interval as RawInterval, TimeTrackingService } from "../../bindings/handydandytray/internal/timetracking";
 import dayjs, { Dayjs } from "dayjs";
 import { transformDatesToGo, WithDates } from "./dateAdapter";
+import { Events } from '@wailsio/runtime';
 
 export type Interval = WithDates<RawInterval, "Start" | "End">;
 
@@ -25,6 +26,12 @@ export type UseTimetrackingStats = {
 
 
 export const useTimeTrackingStats = (start?: string, end?: string): UseTimetrackingStats => {
+    const queryClient = useQueryClient();
+
+    Events.On("timetracking:intervalAdded", () => {
+        queryClient.invalidateQueries({queryKey: ["timetracking", "stats"]})
+    })
+
     const stats = useQuery({
         queryKey: ["timetracking", "stats", start, end],
             queryFn: async () => {
@@ -69,6 +76,7 @@ export const useTimeTracking = (): UseTimetracking => {
     const addIntervalMutation = useMutation({
         mutationFn: (interval: Interval) => TimeTrackingService.AddInterval(convertIntervalToGo(interval)),
         onSuccess: () => {
+            Events.Emit("timetracking:intervalAdded")
             queryClient.invalidateQueries({ queryKey: ["timetracking"] });
         },
     })

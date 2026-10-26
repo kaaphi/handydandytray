@@ -34,6 +34,7 @@ func NewUIService(app *application.App, scheduler *services.Scheduler) *UIServic
 
 func (g *UIService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	return g.scheduler.ScheduleRepeated(uuid.New(), "entertime", "0 * * * *", func() {
+		g.app.Logger.Info("Triggering hourly enter time notification.")
 		g.ShowNotification("enterTime", map[string]string{})
 	})
 }
@@ -157,6 +158,7 @@ func (g *UIService) ShowNotification(notificationType string, props map[string]s
 
 func (g *UIService) SnoozeEnterTime() {
 	err := g.scheduler.ScheduleOneShot(uuid.New(), "entertime", time.Now().Add(5*time.Minute), func() {
+		g.app.Logger.Info("Triggering snoozed enter time notification.")
 		g.ShowNotification("enterTime", map[string]string{})
 	})
 
