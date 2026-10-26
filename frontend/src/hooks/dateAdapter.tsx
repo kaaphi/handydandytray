@@ -36,7 +36,14 @@ export const transformDatesToGo = <T extends Record<string, any>, K extends keyo
     }
   }
 
-  console.log(raw)
-
   return raw;
+}
+
+export const transformDateToGo = (value: any): string => {
+  if (dayjs.isDayjs(value)) {
+    return value.toISOString()
+  } else if (typeof value === 'string') {
+    return value
+  }
+  return String(value)
 }

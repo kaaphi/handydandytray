@@ -29,7 +29,7 @@ type Interval struct {
 
 type DateStats struct {
 	Date       string
-	Activities map[string]int
+	Activities map[string]map[string]int
 }
 
 type ConfigProvider interface {
@@ -142,6 +142,17 @@ func (g *TimeTrackingService) GetRecentActivities(ctx context.Context, daysBack 
 	return activities, nil
 }
 
+func (g *TimeTrackingService) getCategoryByActivities() map[string]string {
+	timetrackingConfig := g.configService.Config().Timetracking
+	activityByCategory := make(map[string]string)
+	for category, activities := range timetrackingConfig.CategoryActivities {
+		for _, activity := range activities {
+			activityByCategory[activity] = category
+		}
+	}
+	return activityByCategory
+}
+
 func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, start time.Time, end time.Time) ([]DateStats, error) {
 	query := `
 	SELECT date(interval_start) AS interval_date, activity, SUM(activity_minutes) FROM timetracking_intervals
@@ -157,6 +168,8 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 	defer rows.Close()
 
 	stats := make([]DateStats, 0)
+	categoryByActivity := g.getCategoryByActivities()
+	defaultCategory := g.configService.Config().Timetracking.DefaultCategory
 
 	for rows.Next() {
 		var intervalDate string
@@ -170,12 +183,20 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 		if len(stats) == 0 || stats[len(stats)-1].Date != intervalDate {
 			stats = append(stats, DateStats{
 				Date:       intervalDate,
-				Activities: make(map[string]int),
+				Activities: make(map[string]map[string]int),
 			})
 		}
-
+		category := categoryByActivity[activity]
+		if category == "" {
+			category = defaultCategory
+		}
 		// Add activity to the most recent DateStats
-		stats[len(stats)-1].Activities[activity] = activityMinutes
+		activities := stats[len(stats)-1].Activities[category]
+		if activities == nil {
+			activities = make(map[string]int)
+			stats[len(stats)-1].Activities[category] = activities
+		}
+		activities[activity] = activityMinutes
 	}
 
 	if err := rows.Err(); err != nil {

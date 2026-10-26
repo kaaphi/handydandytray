@@ -26,7 +26,7 @@ type UIService struct {
 
 func NewUIService(app *application.App, scheduler *services.Scheduler) *UIService {
 	service := &UIService{app: app, scheduler: scheduler}
-	service.createTodoWindow()
+	service.createMainWindow()
 	service.createEnterTimeWindow()
 	service.createNotificationWindow()
 	return service
@@ -38,10 +38,10 @@ func (g *UIService) ServiceStartup(ctx context.Context, options application.Serv
 	})
 }
 
-func (g *UIService) createTodoWindow() {
+func (g *UIService) createMainWindow() {
 	todosWin := g.app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:   "todos",
-		Title:  "Todos",
+		Name:   "main",
+		Title:  "Handy Dandy Tray",
 		Width:  600,
 		Height: 600,
 		URL:    "/#/todos",
@@ -115,9 +115,9 @@ func (g *UIService) HideEnterTimeWindow() {
 	}
 }
 
-func (g *UIService) OpenTodosWindow() {
+func (g *UIService) OpenMainWindow() {
 	// Focus existing instance if already open
-	if todosWin, ok := g.app.Window.GetByName("todos"); ok {
+	if todosWin, ok := g.app.Window.GetByName("main"); ok {
 		todosWin.Show()
 		todosWin.Focus()
 		return
@@ -136,12 +136,6 @@ func (g *UIService) ShowNotificationsWindow() {
 	}
 
 	g.app.Logger.Error("No notifications window to display!")
-}
-
-func (g *UIService) HideTodoReminder() {
-	if todoReminder, ok := g.app.Window.GetByName("todoReminder"); ok {
-		todoReminder.Hide()
-	}
 }
 
 func (g *UIService) HideNotifications() {

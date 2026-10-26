@@ -98,7 +98,7 @@ func main() {
 	})
 	systray.SetMenu(menu)
 	systray.OnClick(func() {
-		uiService.OpenTodosWindow()
+		uiService.OpenMainWindow()
 	})
 
 	// Run the application. This blocks until the application has been exited.

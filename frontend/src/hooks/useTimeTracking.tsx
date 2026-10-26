@@ -1,5 +1,5 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Interval as RawInterval, TimeTrackingService } from "../../bindings/handydandytray/internal/timetracking";
+import { DateStats, Interval as RawInterval, TimeTrackingService } from "../../bindings/handydandytray/internal/timetracking";
 import dayjs, { Dayjs } from "dayjs";
 import { transformDatesToGo, WithDates } from "./dateAdapter";
 
@@ -15,6 +15,34 @@ export type UseTimetracking = {
     addInterval: UseMutateAsyncFunction<void, Error, Interval, unknown>
     isLoading: boolean
     error: Error | null
+}
+
+export type UseTimetrackingStats = {
+    data?: DateStats[]|null
+    isLoading: boolean
+    error: Error | null
+}
+
+
+export const useTimeTrackingStats = (start?: string, end?: string): UseTimetrackingStats => {
+    const stats = useQuery({
+        queryKey: ["timetracking", "stats", start, end],
+            queryFn: async () => {
+                if (start && end) {
+                    return TimeTrackingService.GetTimeTrackingDateStats(start, end)
+                } else {
+                    return null
+                }
+            },
+            //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
+            staleTime: Infinity
+    })
+
+    return {
+        data: stats.data,
+        error: stats.error,
+        isLoading: stats.isPending
+    }
 }
 
 export const useTimeTracking = (): UseTimetracking => {

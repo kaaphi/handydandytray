@@ -2,4 +2,4 @@
 defaultCategory = "work"
 
 [Timetracking.categoryActivities]
-non-work = ["lunch"]
+non-work = ["lunch", "browsing"]

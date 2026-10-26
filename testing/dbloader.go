@@ -50,7 +50,7 @@ func getTodayAt(hour int) time.Time {
 }
 
 func main() {
-	dbService := services.NewDbService(slog.Default(), "test_loader.db")
+	dbService := services.NewDbService(slog.Default(), "test.db")
 	if err := dbService.ServiceStartup(context.Background(), application.DefaultServiceOptions); err != nil {
 		log.Fatal(err)
 	}
@@ -74,12 +74,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	start := getTodayAt(8).AddDate(0, 0, -6)
+	start := getTodayAt(8).AddDate(0, 0, -10)
 
-	for d := 0; d < 5; d++ {
+	for d := 0; d < 10; d++ {
 		startOfDay := start.AddDate(0, 0, d)
 		for h := 0; h < 8; h++ {
-			if err := service.AddInterval(context.Background(), CreateRandomHourInterval(startOfDay.Add(time.Duration(h)*time.Hour), "work", "other", "staring")); err != nil {
+			if err := service.AddInterval(context.Background(), CreateRandomHourInterval(startOfDay.Add(time.Duration(h)*time.Hour), "work", "other", "browsing")); err != nil {
 				log.Fatal(err)
 			}
 		}

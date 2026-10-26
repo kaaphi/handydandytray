@@ -95,7 +95,7 @@ const TodoNotification = ({ props, containerProps }: NotificationProps) => {
     const todo = useTodo(props.todoId)
 
     return <NotificationContainer title="Todo Reminder" {...containerProps} removeOnClick onClick={() => {
-        UIService.OpenTodosWindow()
+        UIService.OpenMainWindow()
         if (todo.data?.id) {
             Events.Emit("todo:reminderClicked", todo.data.id);
         }
