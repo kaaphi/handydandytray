@@ -5,7 +5,12 @@ export interface Config {
     "Timetracking": TimeTrackingConfig;
 }
 
+export interface TimeTrackingCategory {
+    "Name": string;
+    "Activities": string[] | null;
+}
+
 export interface TimeTrackingConfig {
     "DefaultCategory": string;
-    "CategoryActivities": { [_ in string]?: string[] | null } | null;
+    "Categories": TimeTrackingCategory[] | null;
 }

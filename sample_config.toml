@@ -1,0 +1,6 @@
+[Timetracking]
+defaultCategory = "work"
+
+[[Timetracking.categories]]
+name = "non-work"
+activities = ["lunch", "browsing", "other"]

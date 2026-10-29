@@ -7,6 +7,9 @@ export {
 };
 
 export type {
+    Activity,
+    Category,
     DateStats,
-    Interval
+    Interval,
+    TimeTrackingStats
 } from "./models.js";

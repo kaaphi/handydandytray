@@ -89,8 +89,12 @@ func main() {
 
 	menu := app.NewMenu()
 	appendDevMenu(app, menu, todoService, uiService)
-	menu.Add("Enter Time Now").OnClick(func(ctx *application.Context) {
+	menu.Add("Enter time now").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
+	})
+	menu.Add("Reset next interval start").OnClick(func(ctx *application.Context) {
+		timeTrackingService.UpdateDefaultBaselineForNextInterval(app.Context(), time.Now())
+		app.Event.Emit("timetracking:baselineUpdated")
 	})
 
 	menu.Add("Quit Handy Dandy Tray").OnClick(func(ctx *application.Context) {

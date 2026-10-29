@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, ScrollArea, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
+import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
 import { sortTodos, Todo, useTodos } from "./hooks/useTodos";
 import { useDisclosure, useHover } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -12,6 +12,8 @@ import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavig
 import { MarkdownViewer } from "./lib/MarkdownViewer";
 
 import { triggerNotification } from "./lib/notifications";
+import { ErrorBoundary } from "react-error-boundary";
+import { FallbackError } from "./FallbackError";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -267,13 +269,13 @@ const TodoList = ({ completed = false, todoItemParams = {}, processTodos }: Todo
     }, [highlightedId, highlightTimer])
 
     return (
-        <ScrollArea style={{ flex: 1 }}>
+        <Table.ScrollContainer minWidth={0} style={{ flex: 1 }}>
             <Table verticalSpacing="lg" horizontalSpacing="md">
                 <Table.Tbody>
                     {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
                 </Table.Tbody>
             </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
     )
 }
 
@@ -318,37 +320,39 @@ export const Todos = () => {
 
     return (
         // 1. Root container fills entire window height and prevents global window scrolling
-        <TickerProvider>
-            <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
-                    <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
-                </Modal>
-                <Tabs value={activeTab} onChange={(value) => {
-                    if (isTodoTab(value)) {
-                        setActiveTab(value)
-                    }
-                }} keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                    <Flex justify="space-between" align="center" w="100%">
-                        <Tabs.List style={{ flexShrink: 0 }}>
-                            <Tabs.Tab value="inProgress">
-                                In Progress
-                            </Tabs.Tab>
-                            <Tabs.Tab value="completed">
-                                Completed
-                            </Tabs.Tab>
+        <ErrorBoundary fallback={<FallbackError />}>
+            <TickerProvider>
+                <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
+                        <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
+                    </Modal>
+                    <Tabs value={activeTab} onChange={(value) => {
+                        if (isTodoTab(value)) {
+                            setActiveTab(value)
+                        }
+                    }} keepMounted={false} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                        <Flex justify="space-between" align="center" w="100%">
+                            <Tabs.List style={{ flexShrink: 0 }}>
+                                <Tabs.Tab value="inProgress">
+                                    In Progress
+                                </Tabs.Tab>
+                                <Tabs.Tab value="completed">
+                                    Completed
+                                </Tabs.Tab>
 
-                        </Tabs.List>
-                        <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon />}>Add Todo</Button>
-                    </Flex>
-                    <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <InProgress openEditTodo={openAddEditTodo} />
-                    </Tabs.Panel>
+                            </Tabs.List>
+                            <Button size="md" variant="subtle" disabled={todos.isLoading} onClick={() => openAddEditTodo()} leftSection={<PlusIcon />}>Add Todo</Button>
+                        </Flex>
+                        <Tabs.Panel value={TodoTab.inProgress} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <InProgress openEditTodo={openAddEditTodo} />
+                        </Tabs.Panel>
 
-                    <Tabs.Panel value={TodoTab.completed} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <Completed />
-                    </Tabs.Panel>
-                </Tabs>
-            </Box>
-        </TickerProvider>
+                        <Tabs.Panel value={TodoTab.completed} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <Completed />
+                        </Tabs.Panel>
+                    </Tabs>
+                </Box>
+            </TickerProvider>
+        </ErrorBoundary>
     )
 }
