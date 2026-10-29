@@ -8,5 +8,6 @@ export {
 
 export type {
     Config,
+    TimeTrackingCategory,
     TimeTrackingConfig
 } from "./models.js";

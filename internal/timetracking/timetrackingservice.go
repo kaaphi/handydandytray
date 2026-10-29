@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"handydandytray/internal/services"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -17,7 +18,7 @@ type TimeTrackingService struct {
 	dbService       *services.DbService
 	db              *sql.DB
 	configService   ConfigProvider
-	CurrentBaseline time.Time
+	currentBaseline time.Time
 }
 
 type Interval struct {
@@ -27,9 +28,32 @@ type Interval struct {
 	Activities map[string]int
 }
 
+type dbDateStats struct {
+	date       string
+	activities map[string]map[string]int
+}
+
+type TimeTrackingStats struct {
+	Dates                []DateStats
+	TotalDurationMinutes int
+	TotalsByCategory     []Category
+}
+
 type DateStats struct {
-	Date       string
-	Activities map[string]map[string]int
+	Date                 string
+	TotalDurationMinutes int
+	Categories           []Category
+}
+
+type Category struct {
+	Name                 string
+	TotalDurationMinutes int
+	Activities           []Activity
+}
+
+type Activity struct {
+	Name            string
+	DurationMinutes int
 }
 
 type ConfigProvider interface {
@@ -41,7 +65,7 @@ func NewTimeTrackingService(logger *slog.Logger, dbService *services.DbService, 
 		logger:          logger,
 		dbService:       dbService,
 		configService:   configService,
-		CurrentBaseline: time.Now(),
+		currentBaseline: time.Now(),
 	}
 }
 
@@ -81,6 +105,10 @@ func (g *TimeTrackingService) AddInterval(ctx context.Context, interval *Interva
 	return nil
 }
 
+func (g *TimeTrackingService) UpdateDefaultBaselineForNextInterval(ctx context.Context, baseline time.Time) {
+	g.currentBaseline = baseline
+}
+
 func (g *TimeTrackingService) GetBaselineForNextInterval(ctx context.Context) (time.Time, error) {
 	query := `
 	SELECT interval_end FROM timetracking_intervals ORDER BY interval_start DESC LIMIT 1
@@ -98,17 +126,17 @@ func (g *TimeTrackingService) GetBaselineForNextInterval(ctx context.Context) (t
 			return intervalEnd, fmt.Errorf("scan timetracking_intervals row: %w", err)
 		}
 	} else {
-		return g.CurrentBaseline, nil
+		return g.currentBaseline, nil
 	}
 
 	if err := rows.Err(); err != nil {
 		return intervalEnd, fmt.Errorf("rows iteration: %w", err)
 	}
 
-	if g.CurrentBaseline.Before(intervalEnd) {
+	if g.currentBaseline.Before(intervalEnd) {
 		return intervalEnd, nil
 	} else {
-		return g.CurrentBaseline, nil
+		return g.currentBaseline, nil
 	}
 }
 
@@ -145,15 +173,16 @@ func (g *TimeTrackingService) GetRecentActivities(ctx context.Context, daysBack 
 func (g *TimeTrackingService) getCategoryByActivities() map[string]string {
 	timetrackingConfig := g.configService.Config().Timetracking
 	activityByCategory := make(map[string]string)
-	for category, activities := range timetrackingConfig.CategoryActivities {
-		for _, activity := range activities {
-			activityByCategory[activity] = category
+	for _, category := range timetrackingConfig.Categories {
+		for _, activity := range category.Activities {
+			activityByCategory[activity] = category.Name
 		}
 	}
+
 	return activityByCategory
 }
 
-func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, start time.Time, end time.Time) ([]DateStats, error) {
+func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, start time.Time, end time.Time) (*TimeTrackingStats, error) {
 	query := `
 	SELECT date(interval_start) AS interval_date, activity, SUM(activity_minutes) FROM timetracking_intervals
 	WHERE interval_start >= ? AND interval_start < ?
@@ -167,7 +196,7 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 	}
 	defer rows.Close()
 
-	stats := make([]DateStats, 0)
+	stats := make([]dbDateStats, 0)
 	categoryByActivity := g.getCategoryByActivities()
 	defaultCategory := g.configService.Config().Timetracking.DefaultCategory
 
@@ -180,10 +209,10 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 		}
 
 		// Append a new DateStats whenever the date changes or on the first iteration
-		if len(stats) == 0 || stats[len(stats)-1].Date != intervalDate {
-			stats = append(stats, DateStats{
-				Date:       intervalDate,
-				Activities: make(map[string]map[string]int),
+		if len(stats) == 0 || stats[len(stats)-1].date != intervalDate {
+			stats = append(stats, dbDateStats{
+				date:       intervalDate,
+				activities: make(map[string]map[string]int),
 			})
 		}
 		category := categoryByActivity[activity]
@@ -191,10 +220,10 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 			category = defaultCategory
 		}
 		// Add activity to the most recent DateStats
-		activities := stats[len(stats)-1].Activities[category]
+		activities := stats[len(stats)-1].activities[category]
 		if activities == nil {
 			activities = make(map[string]int)
-			stats[len(stats)-1].Activities[category] = activities
+			stats[len(stats)-1].activities[category] = activities
 		}
 		activities[activity] = activityMinutes
 	}
@@ -203,5 +232,74 @@ func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, star
 		return nil, fmt.Errorf("rows iteration: %w", err)
 	}
 
-	return stats, nil
+	return g.convertDbDateStatsArray(stats), nil
+}
+
+func (g *TimeTrackingService) convertDbDateStatsArray(statsArray []dbDateStats) *TimeTrackingStats {
+	config := g.configService.Config().Timetracking
+
+	output := TimeTrackingStats{
+		TotalDurationMinutes: 0,
+		Dates:                make([]DateStats, len(statsArray)),
+		TotalsByCategory:     make([]Category, len(config.Categories)+1),
+	}
+	output.TotalsByCategory[0] = Category{Name: config.DefaultCategory}
+	for idx, category := range config.Categories {
+		output.TotalsByCategory[idx+1] = Category{Name: category.Name, Activities: make([]Activity, 0, 2)}
+	}
+
+	for dateIdx, stat := range statsArray {
+		output.Dates[dateIdx] = convertDbDateStats(&stat, output.TotalsByCategory)
+		output.TotalDurationMinutes += output.Dates[dateIdx].TotalDurationMinutes
+	}
+
+	return &output
+}
+
+func convertDbDateStats(stats *dbDateStats, totalsByCategory []Category) DateStats {
+	output := DateStats{
+		Date:                 stats.date,
+		TotalDurationMinutes: 0,
+		Categories:           make([]Category, len(stats.activities)),
+	}
+
+	categoryIdx := 0
+	for i := range totalsByCategory {
+		activities := stats.activities[totalsByCategory[i].Name]
+		if activities != nil {
+			output.Categories[categoryIdx] = convertDbCategory(&totalsByCategory[i], activities)
+			output.TotalDurationMinutes += output.Categories[categoryIdx].TotalDurationMinutes
+			totalsByCategory[i].TotalDurationMinutes += output.Categories[categoryIdx].TotalDurationMinutes
+			categoryIdx++
+		}
+	}
+
+	return output
+}
+
+func convertDbCategory(category *Category, activities map[string]int) Category {
+	output := Category{
+		Name:                 category.Name,
+		TotalDurationMinutes: 0,
+		Activities:           make([]Activity, len(activities)),
+	}
+
+	activityIdx := 0
+	for activity, duration := range activities {
+		output.Activities[activityIdx] = Activity{
+			Name:            activity,
+			DurationMinutes: duration,
+		}
+		output.TotalDurationMinutes += duration
+		activityTotalIdx := slices.IndexFunc(category.Activities, func(e Activity) bool { return e.Name == activity })
+		if activityTotalIdx < 0 {
+			category.Activities = append(category.Activities, Activity{Name: activity, DurationMinutes: duration})
+		} else {
+			category.Activities[activityTotalIdx].DurationMinutes += duration
+		}
+
+		activityIdx++
+	}
+
+	return output
 }

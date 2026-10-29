@@ -63,8 +63,11 @@ func main() {
 	configService := services.NewSimpleConfigService(&services.Config{
 		Timetracking: services.TimeTrackingConfig{
 			DefaultCategory: "work",
-			CategoryActivities: map[string][]string{
-				"non-work": {"staring"},
+			Categories: []services.TimeTrackingCategory{
+				{
+					Name:       "non-work",
+					Activities: []string{"staring"},
+				},
 			},
 		},
 	})

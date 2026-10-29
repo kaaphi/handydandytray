@@ -16,8 +16,13 @@ type ConfigService interface {
 }
 
 type TimeTrackingConfig struct {
-	DefaultCategory    string
-	CategoryActivities map[string][]string
+	DefaultCategory string
+	Categories      []TimeTrackingCategory
+}
+
+type TimeTrackingCategory struct {
+	Name       string
+	Activities []string
 }
 
 type Config struct {
@@ -44,8 +49,8 @@ func (g *DefaultConfigService) ServiceStartup(ctx context.Context, options appli
 func (g *DefaultConfigService) Reload() error {
 	var config Config = Config{
 		Timetracking: TimeTrackingConfig{
-			DefaultCategory:    "default",
-			CategoryActivities: map[string][]string{},
+			DefaultCategory: "default",
+			Categories:      []TimeTrackingCategory{},
 		},
 	}
 

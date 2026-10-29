@@ -47,3 +47,28 @@ export const transformDateToGo = (value: any): string => {
   }
   return String(value)
 }
+
+export enum Day {
+  Sunday = 0,
+  Monday,
+  Tuesday,
+  Wednesday,
+  Thursday,
+  Friday,
+  Saturday,
+}
+
+/**
+ * Returns the start of the most recent target day before the provided date.
+ * 
+ * @param targetDay the target day
+ * @param date the date before which to find the target day
+ * @param includeCurrentDay whether to include the provided date
+ * @returns the start of the most recent target day before the provided date
+ */
+export const mostRecentDay = (targetDay: 0 | 1 | 2 | 3 | 4 | 5 | 6, date: Dayjs = dayjs(), includeCurrentDay: boolean = true):Dayjs => {
+  // targetDay: 0=Sunday, 1=Monday, ..., 6=Saturday
+  const diff = (date.day() - targetDay + 7) % 7;
+  const daysBack = (diff === 0 && !includeCurrentDay) ? 7 : diff;
+  return date.subtract(daysBack, "day").startOf("day");
+}

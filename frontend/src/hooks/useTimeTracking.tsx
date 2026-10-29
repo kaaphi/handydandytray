@@ -1,5 +1,5 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DateStats, Interval as RawInterval, TimeTrackingService } from "../../bindings/handydandytray/internal/timetracking";
+import { Interval as RawInterval, TimeTrackingService, TimeTrackingStats } from "../../bindings/handydandytray/internal/timetracking";
 import dayjs, { Dayjs } from "dayjs";
 import { transformDatesToGo, WithDates } from "./dateAdapter";
 import { Events } from '@wailsio/runtime';
@@ -19,11 +19,10 @@ export type UseTimetracking = {
 }
 
 export type UseTimetrackingStats = {
-    data?: DateStats[]|null
+    data?: TimeTrackingStats|null
     isLoading: boolean
     error: Error | null
 }
-
 
 export const useTimeTrackingStats = (start?: string, end?: string): UseTimetrackingStats => {
     const queryClient = useQueryClient();
@@ -55,6 +54,10 @@ export const useTimeTrackingStats = (start?: string, end?: string): UseTimetrack
 export const useTimeTracking = (): UseTimetracking => {
     const queryClient = useQueryClient();
 
+    Events.On("timetracking:baselineUpdated", () => {
+        queryClient.invalidateQueries({queryKey: ["timetracking", "most recent end"]})
+    })
+
     const latestIntervalEnd = useQuery({
             queryKey: ["timetracking", "most recent end"],
             queryFn: async () => {
@@ -68,7 +71,7 @@ export const useTimeTracking = (): UseTimetracking => {
 
     const recentActivities = useQuery({
         queryKey: ["timetracking", "recent activities"],
-            queryFn: async () => TimeTrackingService.GetRecentActivities(7),
+            queryFn: async () => TimeTrackingService.GetRecentActivities(14),
             //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
             staleTime: Infinity
     })

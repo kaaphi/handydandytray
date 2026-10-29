@@ -13,4 +13,6 @@ build/android/gen/
 *.db
 *.db-*
 
+test_config.toml
 foo_test.go
+local_todo.md

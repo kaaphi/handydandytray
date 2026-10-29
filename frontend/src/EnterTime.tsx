@@ -1,4 +1,4 @@
-import { ActionIcon, Autocomplete, Button, Group, LoadingOverlay, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, ComboboxItem, Group, LoadingOverlay, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { formRootRule, useForm } from "@mantine/form";
 import { randomId } from "@mantine/hooks";
 import { ArrowsClockwiseIcon, ClockClockwiseIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
@@ -112,6 +112,10 @@ type EnterTimeFormProps = {
     initialEnd: Dayjs,
 }
 
+const categoryFilter = ({options, search}) => {
+    return !search ? [] : (options as ComboboxItem[]).filter((option) => option.label.toLowerCase().startsWith(search.toLowerCase()))
+}
+
 const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
 
 
@@ -189,13 +193,25 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
                         <Stack>
                         {entries.map((entry, index) => (
                             <Group align="start">
-                                <ActionIcon tabIndex={1} variant="subtle" onClick={() => {
+                                <ActionIcon pt={4} tabIndex={1} variant="subtle" onClick={() => {
                                     form.removeListItem('entries', index)
                                     syncTransformedValues()
                                 }}><TrashIcon /></ActionIcon>
-                                <Autocomplete autoFocus={index==0} selectFirstOptionOnChange autoSelectOnBlur tabIndex={1} key={form.key(`entries.${index}.activity`)} placeholder="Activity" {...form.getInputProps(`entries.${index}.activity`)} data={timetracking.recentActivities ? timetracking.recentActivities : undefined} loading={timetracking.isLoading} />
+                                <Autocomplete 
+                                    autoFocus={index == 0}
+                                    maxDropdownHeight="5.5rem"
+                                    filter={categoryFilter}
+                                    selectFirstOptionOnChange
+                                    autoSelectOnBlur 
+                                    tabIndex={1}
+                                    key={form.key(`entries.${index}.activity`)}
+                                    placeholder="Activity"
+                                    data={timetracking.recentActivities ?? undefined}
+                                    loading={timetracking.isLoading}
+                                    {...form.getInputProps(`entries.${index}.activity`)}
+                                />
                                 <TextInput tabIndex={1} key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
-                                <Text w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
+                                <Text pt={4} w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
                             </Group>
                         ))}
                         {form.errors.entries && (

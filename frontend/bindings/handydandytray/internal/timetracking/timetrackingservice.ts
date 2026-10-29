@@ -29,6 +29,10 @@ export function GetRecentActivities(daysBack: number): $CancellablePromise<strin
     return $Call.ByID(3423745357, daysBack);
 }
 
-export function GetTimeTrackingDateStats(start: string, end: string): $CancellablePromise<$models.DateStats[] | null> {
+export function GetTimeTrackingDateStats(start: string, end: string): $CancellablePromise<$models.TimeTrackingStats | null> {
     return $Call.ByID(2276796666, start, end);
+}
+
+export function UpdateDefaultBaselineForNextInterval(baseline: string): $CancellablePromise<void> {
+    return $Call.ByID(1649275633, baseline);
 }
