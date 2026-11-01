@@ -1,3 +1,4 @@
+import { getThemeColor, MantineColor, useMantineTheme } from '@mantine/core';
 import { useEffect, useRef } from 'react';
 
 export type PulseOptions = {
@@ -5,19 +6,23 @@ export type PulseOptions = {
   initialDelay?: number;
   /** Rest period between pulses (ms) */
   interval?: number;
+  iterations?: number;
   /** Duration of a single pulse cycle (ms) */
   pulseDuration?: number;
   /** Target highlight color during the peak of the pulse */
-  pulseColor?: string;
+  pulseColor?: MantineColor;
 }
 
 export const usePulseBackground = <T extends HTMLElement = HTMLDivElement>({
   initialDelay = 10000,
   interval = 3000,
   pulseDuration = 1000,
-  pulseColor = 'var(--mantine-primary-color-2)',
+  iterations = 1,
+  pulseColor,
 }: PulseOptions = {}): React.RefObject<T | null> => {
   const ref = useRef<T>(null);
+  const theme = useMantineTheme()
+  const resolvedPulseColor = getThemeColor(pulseColor ?? `${theme.primaryColor}.0`, theme)
 
   useEffect(() => {
     const el = ref.current;
@@ -33,11 +38,12 @@ export const usePulseBackground = <T extends HTMLElement = HTMLDivElement>({
       animation = el.animate(
         [
           { backgroundColor: baseColor },
-          { backgroundColor: pulseColor },
+          { backgroundColor: resolvedPulseColor },
           { backgroundColor: baseColor },
         ],
         {
           duration: pulseDuration,
+          iterations: iterations,
           easing: 'ease-in-out',
         }
       );
@@ -55,7 +61,7 @@ export const usePulseBackground = <T extends HTMLElement = HTMLDivElement>({
       clearTimeout(timerId);
       animation?.cancel();
     };
-  }, [initialDelay, interval, pulseDuration, pulseColor]);
+  }, [initialDelay, interval, iterations, pulseDuration, resolvedPulseColor]);
 
   return ref;
 }
