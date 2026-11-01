@@ -23,14 +23,12 @@ type NotificationContainerProps = {
 } & InternalNotificationContainerProps
 
 const NotificationContainer = ({ children, title, onClick = () => { }, remove, removeOnClick = false, withPulse = false }: NotificationContainerProps) => {
-    const pulseRef = usePulseBackground()
+    const pulseRef = usePulseBackground({initialDelay: 5000, pulseDuration: 1000, pulseColor: "handyDandyPink.2", iterations: 3})
     
     return (
         <Paper 
             ref={withPulse ? pulseRef : null}
             h="fit-content"
-            // w="100vw"
-            // radius={0}
             shadow="0"
             withBorder
             p="sm"

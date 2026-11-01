@@ -1,4 +1,4 @@
-import { createTheme } from "@mantine/core";
+import { createTheme, MantineColorsTuple } from "@mantine/core";
 
 
 export type ChartHueTuple = [string, string, string, string, string, string, string, string]
@@ -85,5 +85,22 @@ export const chartHueColor = (chartHue: ChartHueTuple, chartElementIdx: number, 
 export const chartPaletteHue = (chartElementIdx: number, numberOfChartElements?: number): ChartHueTuple => 
     getChartColorItem(chartPalette, chartElementIdx, numberOfChartElements)
 
+const handyDandyPink: MantineColorsTuple = [
+  "#ffe8ff",
+  "#ffceff",
+  "#ff9bff",
+  "#ff64ff",
+  "#fe37fe",
+  "#fe1cfe",
+  "#ff00ff",
+  "#e400e4",
+  "#cb00cb",
+  "#b100b2"
+] 
+
+
 export const theme = createTheme({
+    colors: {
+        handyDandyPink: handyDandyPink
+    }
 })
