@@ -202,7 +202,7 @@ func (g *TodoService) updateReminderJob(todo Todo) {
 }
 
 func (g *TodoService) doRescheduleOrDeleteReminderJob(todo Todo, isDelete bool) {
-	if todo.RemindMeAt.IsZero() || isDelete {
+	if todo.RemindMeAt.IsZero() || isDelete || !todo.CompletedAt.IsZero() {
 		g.removeReminderJob(todo.ID)
 	} else if todo.RemindMeAt.After(time.Now()) {
 		g.ScheduleReminderJob(todo.ID, todo, todo.RemindMeAt)
