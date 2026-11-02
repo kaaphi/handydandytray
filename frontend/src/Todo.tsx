@@ -1,8 +1,8 @@
-import { ActionIcon, Box, Button, Divider, Flex, Group, Menu, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
+import { ActionIcon, Anchor, Box, Button, Divider, Flex, Group, Menu, MenuProps, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
 import { sortTodos, Todo, useTodos } from "./hooks/useTodos";
-import { useDisclosure, useHover } from "@mantine/hooks";
+import { useCounter, useDisclosure, useHover, useUncontrolled } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import dayjs, { Dayjs } from "dayjs";
@@ -14,6 +14,7 @@ import { MarkdownViewer } from "./lib/MarkdownViewer";
 import { triggerNotification } from "./lib/notifications";
 import { ErrorBoundary } from "react-error-boundary";
 import { FallbackError } from "./FallbackError";
+import { RelativeTime } from "./lib/dayjs";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -29,13 +30,43 @@ type AddEditTodoParams = {
     close: () => void
 }
 
+type ReminderInputProps = {
+    value?: string
+    defaultValue?: string
+    onChange?: (value: string) => void
+    error?: React.ReactNode
+}
+const ReminderInput = ({ value, defaultValue, onChange, error }: ReminderInputProps) => {
+    const [_value, setValue] = useUncontrolled({
+        value,
+        defaultValue,
+        finalValue: '',
+        onChange,
+    });
+
+    return (<>
+    <SetReminderMenu onSetReminder={(reminder) => {setValue(reminder?.toISOString() ?? "")}} showClearReminder={!!_value}>
+        <Anchor>
+            {_value ? (
+                <>Edit reminder (<RelativeTime time={dayjs(_value)}/>)</>
+            ) : (
+                "Add reminder"
+            )}
+        </Anchor>
+    </SetReminderMenu>
+    {error}
+    </>
+    )
+}
+
 const AddEditTodo = ({ close, todo }: AddEditTodoParams) => {
     const todos = useTodos()
     const form = useForm({
         mode: "uncontrolled",
         initialValues: {
-            description: todo ? todo.description : "",
-            dueAt: todo ? todo.dueAt : undefined,
+            description: todo?.description ?? "",
+            dueAt: todo?.dueAt ?? undefined,
+            remindMeAt: todo?.remindMeAt ?? undefined
         },
         validate: {
             description: (value) => value.length > 0 ? null : "Invalid description",
@@ -95,57 +126,80 @@ const AddEditTodo = ({ close, todo }: AddEditTodoParams) => {
                 { value: dayjs().add(1, 'day').format('YYYY-MM-DD'), label: 'Tomorrow' },
                 { value: dayjs().startOf("week").add(1, "week").weekday(1).format('YYYY-MM-DD'), label: 'Next Monday' },
             ]} highlightToday clearable {...form.getInputProps("dueAt", { type: "input" })} />
+            <ReminderInput key={form.key("remindMeAt")} {...form.getInputProps("remindMeAt")}/>
             <Button type="submit">{todo ? "Save" : "Add Todo"}</Button>
         </Stack>
     </form>
 }
 
-const SetReminder = ({ todo, close }: { todo: Todo, close: () => void }) => {
-    const todos = useTodos()
-    const [customOpened, { open: openCustom }] = useDisclosure(false)
+type SetReminderMenuProps = {
+    children: React.ReactNode,
+    showClearReminder?: boolean
+    onSetReminder: (remider?: Dayjs) => void
+    onChange?: (opened: boolean) => void
+} & MenuProps
+const SetReminderMenu = ({children, showClearReminder, onSetReminder, onChange = _ => {}, ...menuProps} : SetReminderMenuProps) => {
+    const [customOpened, setCustomOpened ] = useState(false)
     const [customDate, setCustomDate] = useState<string | null>(dayjs().format("YYYY-MM-DD"));
     const [customTime, setCustomTime] = useState("");
-
-    const setReminder = (reminder?: Dayjs) => () => {
-        todo.remindMeAt = reminder
-        todos.updateTodo(todo)
-        close()
-    }
+    const closeCustom = useCallback(() => {
+        setCustomOpened(false)
+        onChange(false)
+        setCustomDate(dayjs().format("YYYY-MM-DD"))
+        setCustomTime("")
+    }, [setCustomOpened, onChange, setCustomDate, setCustomTime])
+    const openCustom = useCallback(() => {
+        setCustomOpened(true)
+        onChange(true)
+    }, [setCustomOpened, onChange])
 
     const options = [
         { value: dayjs().add(15, 'minute'), label: "15 Minutes" },
         { value: dayjs().add(30, 'minute'), label: "30 Minutes" },
         { value: dayjs().add(1, 'hour'), label: "1 Hour" },
         { value: dayjs().add(3, 'hour'), label: "3 Hours" },
-        { value: dayjs().add(1, 'day').set("hour", 6).set("minute", 30).set("second", 0), label: "Tomorrow" },
+        { value: dayjs().add(1, 'day').set("hour", 6).set("minute", 30).set("second", 0), label: "Tomorrow at 6:30" },
     ]
 
-    return (
-        <Stack gap="xs">
-            {options.map((option) =>
-                <Button variant="subtle" onClick={setReminder(option.value)}>{option.label}</Button>
-            )}
-            <Divider />
-            {todo.remindMeAt && <Button variant="subtle" color="red" onClick={setReminder(undefined)}>Clear Reminder</Button>}
-            <Button variant="subtle" onClick={openCustom}>Custom</Button>
-            {customOpened && <>
-                <DatePickerInput value={customDate} onChange={setCustomDate} placeholder="Select date" highlightToday valueFormat="YYYY-MM-DD" />
-                <TimePicker value={customTime} onChange={setCustomTime} withDropdown closeDropdownOnPresetSelect presets={getTimeRange({ startTime: '06:00:00', endTime: '17:00:00', interval: '00:30:00' })} />
-                <Button disabled={!customDate || !customTime} onClick={setReminder(dayjs(`${customDate} ${customTime}`, "YYYY-MM-DD HH:mm:ss"))}>Set Reminder</Button>
-            </>}
+
+
+    return (<>
+    <Modal title="Set Reminder" opened={customOpened} onClose={closeCustom}>
+        <Stack>
+        <DatePickerInput value={customDate} onChange={setCustomDate} placeholder="Select date" highlightToday valueFormat="YYYY-MM-DD" />
+        <TimePicker value={customTime} onChange={setCustomTime} withDropdown closeDropdownOnPresetSelect presets={getTimeRange({ startTime: '06:00:00', endTime: '17:00:00', interval: '00:30:00' })} />
+        <Button disabled={!customDate || !customTime} onClick={() => {
+            onSetReminder(dayjs(`${customDate} ${customTime}`, "YYYY-MM-DD HH:mm:ss"))
+            closeCustom()
+        }}>Set Reminder</Button>
         </Stack>
+    </Modal>
+    <Menu onChange={onChange} {...menuProps}>
+        <Menu.Target>
+            {children}
+        </Menu.Target>
+
+        <Menu.Dropdown>
+            {options.map((option) =>
+                <Menu.Item onClick={() => onSetReminder(option.value)}>{option.label}</Menu.Item>
+            )}
+            <Menu.Divider />
+            {showClearReminder && <Menu.Item color="red" onClick={() => onSetReminder(undefined)}>Clear Reminder</Menu.Item>}
+            <Menu.Item onClick={(e) => {
+                openCustom()
+            }}>Custom...</Menu.Item>
+        </Menu.Dropdown>
+    </Menu>
+    </>
     )
 }
 
 type TodoItemParams = {
     todo: Todo,
-    editReminder?: (todo: Todo) => void,
     openEditTodo?: (todo?: Todo) => void,
     id?: string,
     isHighlighted: boolean,
 }
-
-
 
 const TodoItem = (params: TodoItemParams) => {
     const { todo, id, isHighlighted } = params
@@ -179,12 +233,26 @@ type TodoItemControlsParams = TodoItemParams & {
     isActive: boolean,
 }
 
-const TodoItemControls = ({ isActive, todo, editReminder = () => { }, openEditTodo = () => { } }: TodoItemControlsParams) => {
+const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItemControlsParams) => {
     const isCompleted = !!todo.completedAt
     const todos = useTodos(isCompleted)
-    const [menuOpened, setMenuOpened] = useState(false)
+    //we use a counter here instead of a simple boolean state because we can have multiple components stack keep alive needs, we need to keep track of when none of them are keeping the controls alive anymore
+    const [keepActiveCounter, keepActiveHandlers] = useCounter(0)
+    const updateKeepActive = useCallback((value: boolean) => {
+        if (value) {
+            keepActiveHandlers.increment()
+        } else {
+            keepActiveHandlers.decrement()
+        }
+    }, [keepActiveHandlers.increment, keepActiveHandlers.decrement])
+    
+    const setReminder = useCallback((remindMeAt?: Dayjs) => {
+        todo.remindMeAt = remindMeAt
+        todos.updateTodo(todo)
+    }, [todos, todo])
+
     return (
-        <Transition transition="fade" duration={250} mounted={isActive || menuOpened}>
+        <Transition transition="fade" duration={250} mounted={isActive || keepActiveCounter > 0}>
             {(styles) => (
                 <Paper style={styles} pos="absolute" top={0}
                     right={0} radius="md" withBorder p="xs" mt="1rem" mr="1rem">
@@ -193,9 +261,9 @@ const TodoItemControls = ({ isActive, todo, editReminder = () => { }, openEditTo
                             todo.completedAt = isCompleted ? undefined : dayjs()
                             todos.updateTodo(todo)
                         }}>{isCompleted ? <ArrowUUpLeftIcon /> : <CheckIcon />}</ActionIcon>
-                        {!isCompleted && <ActionIcon size="sm" variant="subtle" onClick={() => editReminder(todo)}><ClockIcon /></ActionIcon>}
+                        {!isCompleted && <SetReminderMenu onChange={updateKeepActive} onSetReminder={setReminder} showClearReminder={!!todo.remindMeAt}><ActionIcon size="sm" variant="subtle"><ClockIcon /></ActionIcon></SetReminderMenu>}
                         {isCompleted && <ActionIcon size="sm" variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon /></ActionIcon>}
-                        {!isCompleted && <Menu onChange={setMenuOpened}>
+                        {!isCompleted && <Menu onChange={updateKeepActive}>
                             <Menu.Target>
                                 <ActionIcon size="sm" variant="subtle"><DotsThreeIcon /></ActionIcon>
                             </Menu.Target>
@@ -210,7 +278,7 @@ const TodoItemControls = ({ isActive, todo, editReminder = () => { }, openEditTo
                                             todoId: todo.id
                                         }
                                     })
-                                }}>Test Reminder</Menu.Item>}
+                                }}>Test Reminder</Menu.Item>}                               
                             </Menu.Dropdown>
                         </Menu>}
                     </Group>
@@ -284,15 +352,9 @@ type InProgressProperties = {
 }
 
 const InProgress = ({ openEditTodo }: InProgressProperties) => {
-    const [editReminderTodo, setEditReminderTodo] = useState<Todo | null>(null)
-
     return (
         <>
-            <Modal opened={!!editReminderTodo} onClose={() => setEditReminderTodo(null)} title="Remind Me">
-                {editReminderTodo && <SetReminder todo={editReminderTodo} close={() => setEditReminderTodo(null)} />}
-            </Modal>
             <TodoList todoItemParams={{
-                editReminder: setEditReminderTodo,
                 openEditTodo: openEditTodo,
             }} processTodos={sortTodos} />
         </>
