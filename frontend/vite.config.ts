@@ -16,4 +16,11 @@ export default defineConfig({
       svgrOptions: { exportType: 'default', ref: true },
     }),
     removeConsole(), wails("./bindings")],
+  test: {
+    // Default is 'node', which is ideal for pure business logic.
+    // Set to 'happy-dom' or 'jsdom' only if testing hooks that rely on DOM globals.
+    environment: 'node',
+    globals: true, // Allows describe, it, expect without importing them
+    taskTitleValueFormatTruncate: 0,
+  },
 });

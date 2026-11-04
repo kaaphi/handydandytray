@@ -38,11 +38,12 @@ export const useTodo = (id?: string) => {
     });
 }
 
+type TodoSortDiffs = (number|undefined)[]
 type TodoSortDetails = {
     /**
-     * Raw sort diff millis from now
+     * Array of raw sort diff millis from now for comparing
      */
-    diff: number
+    diff: TodoSortDiffs
     /**
      * Raw days from now
      */
@@ -52,6 +53,9 @@ type TodoSortDetails = {
      */
     intraDaySort: number
 }
+const buildSortArray = ({dayDiff, intraDaySort, diff}:TodoSortDetails): TodoSortDiffs => 
+    [dayDiff, intraDaySort, ...diff]    
+
 
 /**
  * Determine the data used to sort the active Todo. If a todo has either a remind me or due date, we use that with the diff to now (i.e. sort overdue, then soon to be due, then due in the future).
@@ -62,29 +66,32 @@ type TodoSortDetails = {
  */
 const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): TodoSortDetails => {
     const startOfDay = now.startOf("day")
+    const remindMeAtDiff = todo.remindMeAt?.diff(now)
+    const dueDate = todo.dueAt ? dayjs(todo.dueAt, "YYYY-MM-DD") : undefined
+    const dueAtDiff = dueDate?.diff(now)
+    const createdAtDiff = now.diff(todo.createdAt!)
     let min: TodoSortDetails|undefined = undefined
     if (todo.remindMeAt) {
         min = {
-            diff: todo.remindMeAt!.diff(now),
+            diff: [remindMeAtDiff!, dueAtDiff, createdAtDiff],
             dayDiff: todo.remindMeAt!.startOf("day").diff(startOfDay, "day"),
             intraDaySort: 0
         }
     }
     if (todo.dueAt) {
-        const dueDate = dayjs(todo.dueAt, "YYYY-MM-DD")
-        const diff = dueDate.diff(now)
-        if (!min || min.diff > diff) {
+        const dayDiff = dueDate!.diff(startOfDay, "day")
+        if (!min || min.dayDiff > dayDiff) {
             min = {
-                diff: diff,
-                dayDiff: dueDate.diff(startOfDay, "day"),
+                diff: [dueAtDiff, remindMeAtDiff, createdAtDiff],
+                dayDiff: dayDiff,
                 intraDaySort: 1
             }
         }
     }
     if (!min) {
         min = {
-            diff: now.diff(todo.createdAt!),
-            dayDiff: startOfDay.diff(todo.createdAt!.startOf("day")),
+            diff: [createdAtDiff],
+            dayDiff: startOfDay.diff(todo.createdAt!.startOf("day"), "day"),
             intraDaySort:2
         }
     }
@@ -100,21 +107,22 @@ const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): TodoSortDetails =
  * @returns a negative value if the first argument is less than the second argument, zero if they're equal, and a positive value otherwise
  */
 const compareActiveTodoForSort = (a: Todo, b: Todo, now: Dayjs): number => {
-    const aOrder = calculateActiveTodoSortOrder(a, now)
-    const bOrder = calculateActiveTodoSortOrder(b, now)
+    const aOrder = buildSortArray(calculateActiveTodoSortOrder(a, now))
+    const bOrder = buildSortArray(calculateActiveTodoSortOrder(b, now))
 
-    let result = aOrder.dayDiff - bOrder.dayDiff
-    if (result == 0) {
-        result = aOrder.intraDaySort - bOrder.intraDaySort
-        if (result == 0) {
-            result = aOrder.diff - bOrder.diff
+    let result: number
+    for(let i = 0; i < Math.min(aOrder.length, bOrder.length); i++) {
+        result = (aOrder[i] ?? Number.MAX_SAFE_INTEGER) - (bOrder[i] ?? Number.MAX_SAFE_INTEGER)
+        if (result != 0) {
+            return result
         }
     }
-    return result
+    
+    //everything matched, so just compare id for stable sort
+    return a.id.localeCompare(b.id)
 }
 
-export const sortTodos = (todos: Todo[]): Todo[] => {
-    const now = dayjs()
+export const sortTodos = (todos: Todo[], now = dayjs()): Todo[] => {
     return [...todos].sort((a, b) => {
         return compareActiveTodoForSort(a, b, now);
     });
@@ -171,4 +179,9 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         deleteTodo: deleteTodoMutation.mutateAsync,
         updateTodo: updateTodoMutation.mutateAsync,
     };
+}
+
+export const _testInternals = {
+    calculateActiveTodoSortOrder,
+    compareActiveTodoForSort,
 }
