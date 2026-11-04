@@ -3,6 +3,7 @@ module handydandytray
 go 1.27.0
 
 require (
+	github.com/alecthomas/assert/v2 v2.11.0
 	github.com/go-co-op/gocron/v2 v2.22.0
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml/v2 v2.4.3
@@ -12,10 +13,12 @@ require (
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
+	github.com/alecthomas/repr v0.4.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

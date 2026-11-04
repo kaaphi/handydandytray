@@ -7,7 +7,7 @@ on:
 jobs:
 
   buildgo:
-    name: Build and Test Go
+    name: Build and Test
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
