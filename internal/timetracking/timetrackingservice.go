@@ -1,6 +1,7 @@
 package timetracking
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -92,7 +93,7 @@ func (g *TimeTrackingService) AddInterval(ctx context.Context, interval *Interva
 	query := `INSERT INTO timetracking_intervals (interval_start, interval_end, activity, activity_minutes) VALUES (?, ?, ?, ?)`
 
 	for activity, durationMinutes := range interval.Activities {
-		_, err := tx.ExecContext(ctx, query, interval.Start, interval.End, activity, durationMinutes)
+		_, err := tx.ExecContext(ctx, query, interval.Start.UTC(), interval.End.UTC(), activity, durationMinutes)
 		if err != nil {
 			return fmt.Errorf("insert interval entry: %w", err)
 		}
@@ -145,7 +146,7 @@ func (g *TimeTrackingService) GetRecentActivities(ctx context.Context, daysBack 
 	SELECT DISTINCT activity FROM timetracking_intervals WHERE interval_start > ?
 	`
 
-	rows, err := g.db.Query(query, time.Now().AddDate(0, 0, -daysBack))
+	rows, err := g.db.Query(query, time.Now().UTC().AddDate(0, 0, -daysBack))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get time tracking data: %w", err)
 	}
@@ -184,13 +185,13 @@ func (g *TimeTrackingService) getCategoryByActivities() map[string]string {
 
 func (g *TimeTrackingService) GetTimeTrackingDateStats(ctx context.Context, start time.Time, end time.Time) (*TimeTrackingStats, error) {
 	query := `
-	SELECT date(interval_start) AS interval_date, activity, SUM(activity_minutes) FROM timetracking_intervals
+	SELECT date(interval_start, 'localtime') AS interval_date, activity, SUM(activity_minutes) FROM timetracking_intervals
 	WHERE interval_start >= ? AND interval_start < ?
 	GROUP BY interval_date, activity
 	ORDER BY interval_date ASC
 	`
 
-	rows, err := g.db.Query(query, start, end)
+	rows, err := g.db.Query(query, start.UTC(), end.UTC())
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get time tracking data: %w", err)
 	}
@@ -253,6 +254,12 @@ func (g *TimeTrackingService) convertDbDateStatsArray(statsArray []dbDateStats) 
 		output.TotalDurationMinutes += output.Dates[dateIdx].TotalDurationMinutes
 	}
 
+	for idx := range output.TotalsByCategory {
+		slices.SortFunc(output.TotalsByCategory[idx].Activities, func(a Activity, b Activity) int {
+			return cmp.Compare(a.Name, b.Name)
+		})
+	}
+
 	return &output
 }
 
@@ -300,6 +307,10 @@ func convertDbCategory(category *Category, activities map[string]int) Category {
 
 		activityIdx++
 	}
+
+	slices.SortFunc(output.Activities, func(a Activity, b Activity) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 
 	return output
 }
