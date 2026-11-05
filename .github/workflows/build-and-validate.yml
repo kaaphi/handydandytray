@@ -1,8 +1,6 @@
 name: Build and Validate
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -33,5 +31,9 @@ jobs:
     - name: Build
       run: wails3 build
 
-    - name: Test
+    - name: Test Go
       run: go test -v ./...
+
+    - name: Test Frontend
+      run: npm run test
+      working-directory: ./frontend
