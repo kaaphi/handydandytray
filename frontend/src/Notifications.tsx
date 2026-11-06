@@ -37,6 +37,7 @@ const NotificationContainer = ({ children, title, onClick = () => { }, remove, r
                 flexDirection: 'column',
                 boxSizing: 'border-box',
                 overflow: 'hidden',
+                borderWidth: "3px"
             }}
             onClick={() => {
                 if (removeOnClick) {
