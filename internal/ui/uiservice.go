@@ -233,3 +233,7 @@ func (g *UIService) SnoozeEnterTime() {
 		g.app.Logger.Error("Failed to snooze enter time!", "error", err)
 	}
 }
+
+func (g *UIService) QuitApp() {
+	g.app.Quit()
+}

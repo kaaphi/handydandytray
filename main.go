@@ -94,15 +94,16 @@ func main() {
 
 	menu := app.NewMenu()
 	appendDevMenu(app, menu, todoService, uiService, logLevel)
-	menu.Add("Enter time now").OnClick(func(ctx *application.Context) {
+	menu.Add("Enter time now...").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
 	})
-	menu.Add("Reset next interval start").OnClick(func(ctx *application.Context) {
+	menu.AddSubmenu("Time tracking").Add("Set next interval start to now").OnClick(func(ctx *application.Context) {
 		timeTrackingService.UpdateDefaultBaselineForNextInterval(app.Context(), time.Now())
 		app.Event.Emit("timetracking:baselineUpdated")
 	})
 
-	menu.Add("Quit Handy Dandy Tray").OnClick(func(ctx *application.Context) {
+	menu.AddSeparator()
+	menu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
 	uiService.SetSysTrayMenu(menu)
@@ -142,14 +143,18 @@ func appendDevMenu(app *application.App, menu *application.Menu, todoService *to
 	}
 
 	app.Logger.Info("DEV MODE")
-	menu.AddCheckbox("Debug Logs", false).OnClick(func(ctx *application.Context) {
+
+	devMenu := menu.AddSubmenu("Developer options")
+	menu.AddSeparator()
+
+	devMenu.AddCheckbox("Debug Logs", false).OnClick(func(ctx *application.Context) {
 		if ctx.ClickedMenuItem().Checked() {
 			logLevel.Set(slog.LevelDebug)
 		} else {
 			logLevel.Set(slog.LevelInfo)
 		}
 	})
-	menu.Add("Trigger Random Reminder").OnClick(func(ctx *application.Context) {
+	devMenu.Add("Trigger Random Reminder").OnClick(func(ctx *application.Context) {
 		todos, err := todoService.GetActiveTodos(app.Context())
 
 		if err != nil {
@@ -165,4 +170,5 @@ func appendDevMenu(app *application.App, menu *application.Menu, todoService *to
 			app.Logger.Info("No active todos to trigger reminder for")
 		}
 	})
+
 }
