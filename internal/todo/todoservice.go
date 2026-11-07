@@ -16,14 +16,22 @@ import (
 
 type UINotifier interface {
 	ShowNotification(notificationType string, props map[string]string)
+	SetIconBadgeAlert(alert bool)
 }
 
 type TodoService struct {
-	dbService *services.DbService
-	db        *sql.DB
-	scheduler *services.Scheduler
-	logger    *slog.Logger
-	notifier  UINotifier
+	dbService  *services.DbService
+	db         *sql.DB
+	scheduler  *services.Scheduler
+	logger     *slog.Logger
+	notifier   UINotifier
+	appContext context.Context
+
+	alertState struct {
+		hasPastDue    bool
+		nextDue       *time.Time
+		scheduleJobId uuid.UUID
+	}
 }
 
 type TodoData struct {
@@ -42,12 +50,16 @@ type Todo struct {
 const todo_job_tag = "todo"
 
 func NewTodoService(db *services.DbService, scheduler *services.Scheduler, logger *slog.Logger, notifier UINotifier) *TodoService {
-	return &TodoService{
+	service := TodoService{
 		scheduler: scheduler,
 		logger:    logger,
 		dbService: db,
 		notifier:  notifier,
 	}
+
+	service.alertState.scheduleJobId = uuid.New()
+
+	return &service
 }
 
 func (g *TodoService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
@@ -55,8 +67,15 @@ func (g *TodoService) ServiceStartup(ctx context.Context, options application.Se
 		return errors.New("DB is not initialized!")
 	}
 	g.db = g.dbService.Db
+	g.appContext = ctx
 
-	todos, err := g.GetActiveTodos(ctx)
+	go g.scheduleInitJobs()
+
+	return nil
+}
+
+func (g *TodoService) scheduleInitJobs() {
+	todos, err := g.GetActiveTodos(g.appContext)
 
 	if err == nil {
 		for _, todo := range todos {
@@ -66,7 +85,7 @@ func (g *TodoService) ServiceStartup(ctx context.Context, options application.Se
 		g.logger.Error("Failed to load todos during init!", "error", err)
 	}
 
-	return nil
+	g.updateAlertState()
 }
 
 func (g *TodoService) AddTodo(ctx context.Context, todo TodoData) error {
@@ -94,6 +113,7 @@ func (g *TodoService) DeleteTodoById(ctx context.Context, todoId uuid.UUID) erro
 	}
 
 	g.removeReminderJob(todoId)
+	g.updateAlertState()
 
 	return nil
 }
@@ -135,6 +155,72 @@ func (g *TodoService) GetActiveTodos(ctx context.Context) ([]Todo, error) {
 
 func (g *TodoService) GetCompletedTodos(ctx context.Context) ([]Todo, error) {
 	return g.getTodosQuery(ctx, `WHERE data->>'$.completedAt' IS NOT NULL ORDER BY data->>'$.completedAt' DESC`)
+}
+
+// Returns the next due alert (or nil if no alerts are due in the future) and reports whether any alerts are past due.
+func (g *TodoService) getNextDueAlert(ctx context.Context) (*time.Time, bool, error) {
+	todos, err := g.GetActiveTodos(ctx)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to query todos: %w", err)
+	}
+
+	now := time.Now()
+	hasPastDue := false
+	var result time.Time
+
+	updateResult := func(dueTime time.Time) {
+		if dueTime.Before(now) || dueTime.Equal(now) {
+			hasPastDue = true
+		} else if result.IsZero() || dueTime.Before(result) {
+			result = dueTime
+		}
+	}
+
+	for _, todo := range todos {
+		if !todo.RemindMeAt.IsZero() {
+			updateResult(todo.RemindMeAt)
+		}
+
+		if todo.DueAt != "" {
+			dueTime, err := time.Parse("2006-01-02", todo.DueAt)
+			if err != nil {
+				return nil, false, err
+			}
+			updateResult(dueTime)
+		}
+	}
+
+	if result.IsZero() {
+		return nil, hasPastDue, nil
+	} else {
+		return &result, hasPastDue, nil
+	}
+}
+
+func (g *TodoService) updateAlertState() {
+	nextAlert, hasPastDue, err := g.getNextDueAlert(g.appContext)
+	g.logger.Info("next alert due", "nextAlert", nextAlert, "hasPastDue", hasPastDue, "err", err)
+
+	if err != nil {
+		g.logger.Error("Failed to get next due alert!", "error", err)
+	}
+
+	g.notifier.SetIconBadgeAlert(hasPastDue)
+
+	if nextAlert == nil {
+		err = g.scheduler.RemoveJob(g.alertState.scheduleJobId)
+	} else if g.alertState.nextDue == nil || (g.alertState.nextDue != nil && nextAlert.Before(*g.alertState.nextDue)) {
+		err = g.scheduler.ScheduleOneShot(g.alertState.scheduleJobId, "todo", *nextAlert, func() {
+			g.updateAlertState()
+		})
+	}
+	if err != nil {
+		g.logger.Error("Failed to schedule next due alert!", "nextAlert", *nextAlert, "error", err)
+		return
+	}
+
+	g.alertState.nextDue = nextAlert
+	g.alertState.hasPastDue = hasPastDue
 }
 
 func (g *TodoService) getTodosQuery(ctx context.Context, afterFromClauses string, args ...any) ([]Todo, error) {
@@ -186,6 +272,7 @@ func (g *TodoService) addOrUpdateTodo(ctx context.Context, todo Todo, query stri
 	}
 
 	g.updateReminderJob(todo)
+	g.updateAlertState()
 
 	return nil
 }
