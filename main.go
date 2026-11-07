@@ -6,6 +6,7 @@ import (
 	"handydandytray/internal/timetracking"
 	"handydandytray/internal/todo"
 	"handydandytray/internal/ui"
+	"log/slog"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -34,6 +35,11 @@ func init() {
 }
 
 func main() {
+	logLevel := new(slog.LevelVar)
+	logLevel.Set(slog.LevelInfo)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
@@ -44,6 +50,7 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
+		Logger: logger,
 	})
 
 	scheduler, err := services.NewScheduler()
@@ -85,10 +92,8 @@ func main() {
 		application.NewService(timeTrackingService),
 	)
 
-	systray := app.SystemTray.New()
-
 	menu := app.NewMenu()
-	appendDevMenu(app, menu, todoService, uiService)
+	appendDevMenu(app, menu, todoService, uiService, logLevel)
 	menu.Add("Enter time now").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
 	})
@@ -100,10 +105,7 @@ func main() {
 	menu.Add("Quit Handy Dandy Tray").OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
-	systray.SetMenu(menu)
-	systray.OnClick(func() {
-		uiService.OpenMainWindow()
-	})
+	uiService.SetSysTrayMenu(menu)
 
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
@@ -134,12 +136,19 @@ func getPath(app *application.App, prodPath string, devPath string) string {
 	}
 }
 
-func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService, uiService *ui.UIService) {
+func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService, uiService *ui.UIService, logLevel *slog.LevelVar) {
 	if !app.Env.Info().Debug {
 		return
 	}
 
 	app.Logger.Info("DEV MODE")
+	menu.AddCheckbox("Debug Logs", false).OnClick(func(ctx *application.Context) {
+		if ctx.ClickedMenuItem().Checked() {
+			logLevel.Set(slog.LevelDebug)
+		} else {
+			logLevel.Set(slog.LevelInfo)
+		}
+	})
 	menu.Add("Trigger Random Reminder").OnClick(func(ctx *application.Context) {
 		todos, err := todoService.GetActiveTodos(app.Context())
 

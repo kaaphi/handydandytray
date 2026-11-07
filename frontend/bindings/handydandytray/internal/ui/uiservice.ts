@@ -5,6 +5,10 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as application$0 from "../../../github.com/wailsapp/wails/v3/pkg/application/models.js";
+
 export function EmitEvent(eventName: string, ...data: any[]): $CancellablePromise<void> {
     return $Call.ByID(4144377486, eventName, data);
 }
@@ -23,6 +27,14 @@ export function OpenEnterTimeWindow(): $CancellablePromise<void> {
 
 export function OpenMainWindow(): $CancellablePromise<void> {
     return $Call.ByID(3652772136);
+}
+
+export function SetIconBadgeAlert(isAlert: boolean): $CancellablePromise<void> {
+    return $Call.ByID(2194590117, isAlert);
+}
+
+export function SetSysTrayMenu(menu: application$0.Menu | null): $CancellablePromise<void> {
+    return $Call.ByID(1240032767, menu);
 }
 
 export function ShowNotification(notificationType: string, props: { [_ in string]?: string } | null): $CancellablePromise<void> {

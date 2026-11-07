@@ -92,6 +92,7 @@ const DevMenu = () => {
                         type: "enterTime"
                     })
                 }>Trigger Enter Time</Menu.Item>
+                <Menu.CheckboxItem onChange={UIService.SetIconBadgeAlert}>Systray alert</Menu.CheckboxItem>
             </Menu.Dropdown>
         </Menu>
         )
