@@ -29,6 +29,10 @@ export function OpenMainWindow(): $CancellablePromise<void> {
     return $Call.ByID(3652772136);
 }
 
+export function QuitApp(): $CancellablePromise<void> {
+    return $Call.ByID(3996575397);
+}
+
 export function SetIconBadgeAlert(isAlert: boolean): $CancellablePromise<void> {
     return $Call.ByID(2194590117, isAlert);
 }
