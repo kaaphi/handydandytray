@@ -3,12 +3,14 @@ import { AutoResizeContainer } from "./lib/AutoResizeContainer";
 import { Button, CloseButton, Group, Paper, Space, Stack, Text } from "@mantine/core";
 import { Events } from '@wailsio/runtime';
 import PawIcon from './assets/paw-icon.svg?react';
-import { useListState } from "@mantine/hooks";
+import { useListState, useMap } from "@mantine/hooks";
 import { UIService } from "../bindings/handydandytray/internal/ui";
 import { useTodo } from "./hooks/useTodos";
 import { marked } from "marked";
 import { BellZIcon, ClockUserIcon } from "@phosphor-icons/react";
 import { usePulseBackground } from "./hooks/usePulseBackground";
+
+const NOTIFICATION_TIMEOUT_MS = 10000
 
 type InternalNotificationContainerProps = {
     remove: () => void
@@ -125,23 +127,28 @@ const EnterTimeNotification = ({ containerProps }: NotificationProps) => {
     </NotificationContainer>
 }
 
+const notificationSingletons = ["entertime"]
+type NotificationSingletonType = typeof notificationSingletons[number]
+
 type NotificationSpecification = {
     component: React.ElementType,
-    allowMultiple: boolean
+    persistent: boolean
+    singletonType?: NotificationSingletonType
 }
 
 const notificationTypes = {
     text: {
         component: TextNotification,
-        allowMultiple: true,
+        persistent: true,
     },
     todo: {
         component: TodoNotification,
-        allowMultiple: true
+        persistent: false,
     },
     enterTime: {
         component: EnterTimeNotification,
-        allowMultiple: false,
+        persistent: true,
+        singletonType: "entertime"
     }
 } satisfies Record<string, NotificationSpecification>
 
@@ -152,30 +159,45 @@ export type NotificationEventData = {
 
 export const Notifications = () => {
     const [notifications, notificationsHandlers] = useListState<NotificationEventData>([])
+    const singletonNotifications = useMap<NotificationSingletonType, NotificationEventData>()
 
     useEffect(() => {
+        let canceled = false
+
         const unsubscribe = Events.On("notification:showNotification", (event) => {
             const notificationEvent = event.data as NotificationEventData;
             console.log("Got notification event!", notificationEvent)
 
             const type: NotificationSpecification = notificationTypes[notificationEvent.type]
 
-            if (!type.allowMultiple) {
-                notificationsHandlers.filter((item, _) =>
-                    item.type != notificationEvent.type
-                )
+            if (type.singletonType) {
+                singletonNotifications.set(type.singletonType!, notificationEvent)
+                if (!type.persistent) {
+                    setTimeout(() => {
+                        if (canceled) return;
+                        singletonNotifications.delete(type.singletonType!)
+                    }, NOTIFICATION_TIMEOUT_MS)
+                }
+            } else {
+                notificationsHandlers.append(notificationEvent)
+                if (!type.persistent) {
+                    setTimeout(() => {
+                        if (canceled) return;
+                        notificationsHandlers.filter((item) => item !== notificationEvent)
+                    }, NOTIFICATION_TIMEOUT_MS)
+                }
             }
 
-            notificationsHandlers.append(notificationEvent)
             UIService.ShowNotificationsWindow()
         });
 
         return () => {
-            unsubscribe(); // Clean up listener on unmount
+            canceled = true
+            unsubscribe() // Clean up listener on unmount
         };
-    }, [])
+    }, [notificationsHandlers, singletonNotifications])
 
-    if (notifications.length == 0) {
+    if (notifications.length == 0 && singletonNotifications.size == 0) {
         UIService.HideNotifications()
     }
 
@@ -202,9 +224,22 @@ export const Notifications = () => {
                     {notifications.map((notification, index) => {
                         const NotificationComponent = notificationTypes[notification.type].component
 
-                        return <NotificationComponent props={notification.props || {}} containerProps={{
+                        return <NotificationComponent key={`notification-${index}`} props={notification.props || {}} containerProps={{
                             remove: () => {
                                 notificationsHandlers.remove(index)
+                            }
+                        }} />
+                    })}
+                    {notificationSingletons.map((type) => {
+                        const notification = singletonNotifications.get(type)
+                        if (!notification) {
+                            return null
+                        }
+
+                        const NotificationComponent = notificationTypes[notification.type].component
+                        return <NotificationComponent key={`singleton-notification-${type}`} props={notification.props || {}} containerProps={{
+                            remove: () => {
+                                singletonNotifications.delete(type)
                             }
                         }} />
                     })}
