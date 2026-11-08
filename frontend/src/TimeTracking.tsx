@@ -1,14 +1,14 @@
 import { ColorSwatch, DataList, DataListItem, DataListItemLabel, DataListItemValue, Group, ScrollArea, SimpleGrid, Stack, Table, Tabs, Title } from "@mantine/core";
 import { DonutChart, DonutChartCell, DonutChartProps, SankeyChart, SankeyChartData, SankeyChartProps } from '@mantine/charts';
 import { DatePickerInput, DatesRangeValue } from "@mantine/dates";
-import dayjs from "dayjs";
+import dayjs from "./lib/dayjs"
 import React, { useState } from "react";
 import { useTimeTrackingStats } from "./hooks/useTimeTracking";
 import { Day, mostRecentDay, transformDateToGo } from "./hooks/dateAdapter";
 import { Category, TimeTrackingStats } from "../bindings/handydandytray/internal/timetracking";
 import { ChartHueTuple, chartPaletteHue, chartHueColor } from "./lib/theme";
-import { ErrorBoundary } from "react-error-boundary";
-import { FallbackError } from "./FallbackError";
+import { DefaultErrorBoundary } from "./FallbackError";
+import { formatHourMinuteDuration } from "./lib/dayjs";
 
 const dateStringToGo = (value?: string | Date | null, roundUpToNextDay?: boolean): string | undefined => {
     if (value) {
@@ -26,11 +26,6 @@ const defaultDateRange = (): [string, string] => {
         return [startOfWeek.format("YYYY-MM-DD"), dayjs().format("YYYY-MM-DD")]
     }
 }
-
-const formatDuration = (minutes?: number): string =>
-    minutes ? `${Math.floor(minutes / 60).toString().padStart(2, "0")}:${(minutes % 60).toString().padStart(2, "0")}` : "00:00"
-
-
 
 type DataStatsTableRowProps = {
     label: string,
@@ -73,10 +68,10 @@ const DateStatsTable = ({ stats, reverseOrder = false, withTotalsSection = false
         <Table tabularNums withRowBorders horizontalSpacing="lg">
             <Table.Tbody>
                 {withTotalsSection && <>
-                    <H1Row label="Total" value={formatDuration(stats.TotalDurationMinutes)} />
+                    <H1Row label="Total" value={formatHourMinuteDuration(stats.TotalDurationMinutes)} />
                     {stats.TotalsByCategory?.map((category, categoryIdx, categoryArray) => (
                         <React.Fragment key={`category-${category.Name}`}>
-                            <H2Row label={category.Name} value={formatDuration(category.TotalDurationMinutes)} />
+                            <H2Row label={category.Name} value={formatHourMinuteDuration(category.TotalDurationMinutes)} />
                             {category.Activities?.map((activity, activityIdx, activityArray) => (
                                 <React.Fragment key={`activity-${activity.Name}`}>
                                     <DataRow label={activity.Name} value={formatPercentDisplay(activity.DurationMinutes, category.TotalDurationMinutes)} lastForSection={categoryIdx == categoryArray.length - 1 && activityIdx == activityArray.length - 1} />
@@ -89,16 +84,16 @@ const DateStatsTable = ({ stats, reverseOrder = false, withTotalsSection = false
                     const dateStats = reverseOrder ? array[array.length - 1 - dateIndex] : item
                     const lastDay = dateIndex == array.length - 1
                     return <React.Fragment key={dateStats.Date}>
-                        <H1Row label={dayjs(dateStats.Date!).format("dddd YYYY/MM/DD")} value={formatDuration(dateStats.TotalDurationMinutes)} />
+                        <H1Row label={dayjs(dateStats.Date!).format("dddd YYYY/MM/DD")} value={formatHourMinuteDuration(dateStats.TotalDurationMinutes)} />
                         {dateStats.Categories!.map((category, categoryIndex, array) => {
                             const lastCategory = categoryIndex == array.length - 1
                             return <React.Fragment key={`category-${category.Name}`}>
-                                <H2Row label={category.Name} value={formatDuration(category.TotalDurationMinutes)} />
+                                <H2Row label={category.Name} value={formatHourMinuteDuration(category.TotalDurationMinutes)} />
                                 {category.Activities!.map((activity, activityIndex, array) => {
                                     const lastActivity = activityIndex == array.length - 1
                                     const lastForDay = lastCategory && lastActivity && !lastDay
                                     return <React.Fragment key={`${dateStats.Date}-${categoryIndex}-${activity.Name}`}>
-                                        <DataRow label={activity.Name} value={formatDuration(activity.DurationMinutes)} lastForSection={lastForDay} />
+                                        <DataRow label={activity.Name} value={formatHourMinuteDuration(activity.DurationMinutes)} lastForSection={lastForDay} />
                                     </React.Fragment>
                                 })}
                             </React.Fragment>
@@ -128,7 +123,7 @@ const TimeTrackingHistory = () => {
                 onChange={setDateRange}
                 valueFormat="YYYY/MM/DD"
             /></Group>
-            <Title order={5}>Total Duration: {formatDuration(stats.data?.TotalDurationMinutes)}</Title>
+            <Title order={5}>Total Duration: {formatHourMinuteDuration(stats.data?.TotalDurationMinutes)}</Title>
             <TimeTrackingSankey timeTrackingData={stats.data} valueFormatType="percent" pr="md" />
             {stats.data && <DateStatsTable stats={stats.data!} withTotalsSection />}
         </Stack>
@@ -155,7 +150,7 @@ const formatPercentDisplay = (value: number, total: number): string => {
 const chartValueFormatter = (type: TimeTrackingFormatterTypes, total: number): ((value: number) => string) => {
     switch (type) {
         case "duration":
-            return formatDuration
+            return formatHourMinuteDuration
         case "percent":
             return (value) => formatPercentDisplay(value, total)
     }
@@ -248,11 +243,11 @@ const Today = () => {
                 <DataList size="xl" fw={700} p="lg">
                     <DataListItem>
                         <DataListItemLabel>Total</DataListItemLabel>
-                        <DataListItemValue>{formatDuration(stats.data?.TotalDurationMinutes)}</DataListItemValue>
+                        <DataListItemValue>{formatHourMinuteDuration(stats.data?.TotalDurationMinutes)}</DataListItemValue>
                     </DataListItem>
                     <DataListItem>
                         <DataListItemLabel>Today</DataListItemLabel>
-                        <DataListItemValue>{formatDuration(todayStats?.TotalDurationMinutes)}</DataListItemValue>
+                        <DataListItemValue>{formatHourMinuteDuration(todayStats?.TotalDurationMinutes)}</DataListItemValue>
                     </DataListItem>
                 </DataList>
                 <TimetrackingBreakdownChart data={chartData} chartLabel="categories" size={150} />
@@ -268,7 +263,7 @@ const Today = () => {
 
 export const TimeTracking = () => {
     return (
-        <ErrorBoundary fallback={<FallbackError />}>
+        <DefaultErrorBoundary>
             <Tabs keepMounted={false} defaultValue="today" h="100vh" style={{ display: 'flex', flexDirection: 'column' }}>
                 <Tabs.List style={{ flexShrink: 0 }}>
                     <Tabs.Tab value="today">Today</Tabs.Tab>
@@ -283,6 +278,6 @@ export const TimeTracking = () => {
                 </Tabs.Panel>
                 <Tabs.Panel value="history" style={{ flex: 1, minHeight: 0 }}><Table.ScrollContainer h="100%" minWidth={0}><TimeTrackingHistory /></Table.ScrollContainer></Tabs.Panel>
             </Tabs>
-        </ErrorBoundary>
+        </DefaultErrorBoundary>
     )
 }

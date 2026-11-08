@@ -1,4 +1,5 @@
-import dayjs, { Dayjs } from "dayjs"
+import { Dayjs } from "dayjs"
+import dayjs from "./dayjs"
 import { RelativeTime } from "./dayjs"
 import { Text, TextProps } from "@mantine/core"
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react"

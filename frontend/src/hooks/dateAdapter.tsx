@@ -1,4 +1,5 @@
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
+import dayjs from "../lib/dayjs"
 
 /**
  * Converts specified string properties of T into Date objects

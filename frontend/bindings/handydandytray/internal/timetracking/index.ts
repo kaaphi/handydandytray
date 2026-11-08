@@ -11,5 +11,6 @@ export type {
     Category,
     DateStats,
     Interval,
+    IntervalStartBaselines,
     TimeTrackingStats
 } from "./models.js";
