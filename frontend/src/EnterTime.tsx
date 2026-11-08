@@ -1,13 +1,17 @@
-import { ActionIcon, Autocomplete, Button, ComboboxItem, Group, LoadingOverlay, Stack, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Autocomplete, Button, ComboboxItem, Group, LoadingOverlay, Menu, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { formRootRule, useForm } from "@mantine/form";
 import { randomId } from "@mantine/hooks";
 import { ArrowsClockwiseIcon, ClockClockwiseIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
+import dayjs from "./lib/dayjs"
 import { useEffect, useState, type ReactNode } from "react";
 import { Events } from '@wailsio/runtime';
 import { DateTimePicker, DateTimePickerProps } from "@mantine/dates";
-import { useTimeTracking } from "./hooks/useTimeTracking";
+import { getInitalStartFromBaselines, IntervalStartBaselines, useTimeTracking } from "./hooks/useTimeTracking";
 import { UIService } from "../bindings/handydandytray/internal/ui";
+import { DefaultErrorBoundary } from "./FallbackError";
+import { ConditionalWrapper } from "./lib/ConditionalWrapper";
+import { formatHourMinuteDuration } from "./lib/dayjs";
 
 type FormValue = {
     entries: EntryFormValue[],
@@ -33,9 +37,6 @@ type TransformedEntryFormValue = {
     duration: number | null,
 }
 
-const formatDuration = (minutes: number | null): string | null => {
-    return minutes != null ? dayjs.duration(minutes, "minutes").format("HH:mm") : null
-}
 
 const validateDuration = (value: string, values: { entries: EntryFormValue[] }): string | null => {
     if (value === "r") {
@@ -53,7 +54,8 @@ const validateDuration = (value: string, values: { entries: EntryFormValue[] }):
 const calculateDurations = (formValue: FormValue): TransformedFormValue => {
     const intervalStart = dayjs(formValue.intervalStart)
     const intervalEnd = dayjs(formValue.intervalEnd)
-    let remainingIntervalMinutes = intervalEnd.diff(intervalStart, "minutes")
+    //we add a second to the end to ensure we get the full final minute in the interval instead of truncating down
+    let remainingIntervalMinutes = intervalEnd.add(1, "second").diff(intervalStart, "minutes")
 
     //create initial pairs populated with absolute numbers
     const transformPairs: [EntryFormValue, TransformedEntryFormValue][] = formValue.entries.map(e => {
@@ -97,18 +99,45 @@ const calculateDurations = (formValue: FormValue): TransformedFormValue => {
 }
 
 type DatePickerButtonProps = {
-    tooltip: string
+    tooltip?: string
     children: ReactNode,
-    onClick: () => void
+    onDateSelect: (value: Dayjs) => void,
+    options: Record<string, Dayjs | undefined>,
 }
+const DatePickerButton = ({ tooltip, children, onDateSelect, options: optionsObject }: DatePickerButtonProps) => {
+    const options = Object.entries(optionsObject).filter(option => option[1]) as [string, Dayjs][]
 
-const DatePickerButton = ({ tooltip, children, onClick }: DatePickerButtonProps) => (
-    <Tooltip label={tooltip}><ActionIcon onClick={onClick} variant="white">{children}</ActionIcon></Tooltip>
-)
+
+    const buttonOnClick = options.length == 1 ? () => onDateSelect(options[0][1]) : undefined
+
+    const actionIconButton = <ActionIcon onClick={buttonOnClick} disabled={options.length == 0} variant="white">{children}</ActionIcon>
+
+    if (options.length < 2) {
+        return (
+            <ConditionalWrapper condition={tooltip} wrap={children => <Tooltip label={tooltip}>{children}</Tooltip>}>{actionIconButton}</ConditionalWrapper>
+        )
+    } else {
+        return (
+            <Menu>
+                <ConditionalWrapper condition={tooltip} wrap={children => <Tooltip label={tooltip}>{children}</Tooltip>}>
+                    <Menu.Target>
+                        <ActionIcon onClick={buttonOnClick} disabled={options.length == 0} variant="white">{children}</ActionIcon>
+                    </Menu.Target>
+                </ConditionalWrapper>
+
+                <Menu.Dropdown>
+                    {options.map(([key, value]) => (
+                        <Menu.Item key={key} onClick={() => onDateSelect(value)}>{`${key} (${value.format("YYYY-MM-DD HH:mm")})`}</Menu.Item>
+                    ))}
+                </Menu.Dropdown>
+            </Menu>
+        )
+    }
+}
 
 
 type EnterTimeFormProps = {
-    initialStart: Dayjs,
+    startBaselines?: IntervalStartBaselines
     initialEnd: Dayjs,
 }
 
@@ -116,8 +145,9 @@ const categoryFilter = ({options, search}) => {
     return !search ? [] : (options as ComboboxItem[]).filter((option) => option.label.toLowerCase().startsWith(search.toLowerCase()))
 }
 
-const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
-
+const EnterTimeForm = ({ startBaselines, initialEnd }: EnterTimeFormProps) => {
+    const initialStart = getInitalStartFromBaselines(startBaselines).startOf("minute")
+    console.log("Baselines", startBaselines, "initialStart", initialStart)
 
     const timetracking = useTimeTracking()
 
@@ -176,6 +206,11 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
         });
     }
 
+    const setDateFormField = (formField: string) => (value: Dayjs) => {
+        form.setFieldValue(formField, value.startOf("minute").format("YYYY-MM-DD HH:mm:ss"))
+        syncTransformedValues()
+    }
+
     return (
         <form onSubmit={form.onSubmit((values) => {
             timetracking.addInterval({
@@ -191,7 +226,7 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
             <Stack align="stretch" justify="space-between" h="100vh" p="xs" >
                 <Group align="start" justify="space-between" wrap="nowrap">
                         <Stack>
-                        {entries.map((entry, index) => (
+                        {entries.map((_, index) => (
                             <Group align="start">
                                 <ActionIcon pt={4} tabIndex={1} variant="subtle" onClick={() => {
                                     form.removeListItem('entries', index)
@@ -211,7 +246,7 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
                                     {...form.getInputProps(`entries.${index}.activity`)}
                                 />
                                 <TextInput tabIndex={1} key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
-                                <Text pt={4} w="5em">{formatDuration(transformedValues.entries[index]?.duration)}</Text>
+                                <Text pt={4} w="5em">{formatHourMinuteDuration(transformedValues.entries[index]?.duration)}</Text>
                             </Group>
                         ))}
                         {form.errors.entries && (
@@ -222,17 +257,15 @@ const EnterTimeForm = ({ initialStart, initialEnd }: EnterTimeFormProps) => {
                         </Stack>
                     <Stack>
                         <Button tabIndex={1} onClick={addItem} variant="outline" leftSection={<PlusIcon />}>Add</Button>
-                        <Text>Remaining: {formatDuration(transformedValues.remainingIntervalMinutes)}</Text>
+                        <Text>Remaining: {formatHourMinuteDuration(transformedValues.remainingIntervalMinutes)}</Text>
                         <DateTimePicker key={form.key("intervalStart")} {...datePickerProps} label="Range Start"
-                            rightSection={<DatePickerButton tooltip={`Reset to ${initialStart.format("YYYY-MM-DD HH:mm")}`} onClick={() => {
-                                form.setFieldValue("intervalStart", initialStart.startOf("minute").format("YYYY-MM-DD HH:mm:ss"))
-                                syncTransformedValues()
+                            rightSection={<DatePickerButton onDateSelect={setDateFormField("intervalStart")} options={{
+                                "Last interval end": startBaselines?.lastIntervalEnd,
+                                "Manual baseline": startBaselines?.manual,
+                                "Application start": startBaselines?.appStart,
                             }}><ClockClockwiseIcon /></DatePickerButton>} {...form.getInputProps("intervalStart")} />
                         <DateTimePicker key={form.key("intervalEnd")} {...datePickerProps} label="Range End"
-                            rightSection={<DatePickerButton tooltip="Update to now" onClick={() => {
-                                form.setFieldValue("intervalEnd", dayjs().startOf("minute").format("YYYY-MM-DD HH:mm:ss"))
-                                syncTransformedValues()
-                            }}><ArrowsClockwiseIcon /></DatePickerButton>}
+                            rightSection={<DatePickerButton tooltip="Update to now" onDateSelect={setDateFormField("intervalEnd")} options={{now: dayjs()}}><ArrowsClockwiseIcon /></DatePickerButton>}
                             {...form.getInputProps("intervalEnd")} />
                     </Stack>
                 </Group>
@@ -259,8 +292,8 @@ export const EnterTime = () => {
     if (timetracking.isLoading) {
         return <LoadingOverlay visible={timetracking.isLoading} />
     } else {
-        return <>
-            <EnterTimeForm key={sessionKey} initialStart={(timetracking.latestIntervalEnd || dayjs()).startOf("minute")} initialEnd={dayjs().startOf("minute")} />
-        </>
+        return (
+            <DefaultErrorBoundary><EnterTimeForm key={sessionKey} startBaselines={timetracking.intervalStartBaselines} initialEnd={dayjs().startOf("minute")} /></DefaultErrorBoundary>
+        )
     }
 }

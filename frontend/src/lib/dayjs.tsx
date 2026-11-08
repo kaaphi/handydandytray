@@ -52,3 +52,6 @@ export type TimeRange = {
     start: Dayjs,
     end: Dayjs,
 }
+
+export const formatHourMinuteDuration = (minutes?: number|null): string =>
+    minutes ? `${Math.floor(minutes / 60).toString().padStart(2, "0")}:${(minutes % 60).toString().padStart(2, "0")}` : "00:00"

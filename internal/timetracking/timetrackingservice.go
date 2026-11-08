@@ -19,7 +19,14 @@ type TimeTrackingService struct {
 	dbService       *services.DbService
 	db              *sql.DB
 	configService   ConfigProvider
+	appStart        time.Time
 	currentBaseline time.Time
+}
+
+type IntervalStartBaselines struct {
+	AppStart        time.Time `json:"appStart,omitzero"`
+	Manual          time.Time `json:"manual,omitzero"`
+	LastintervalEnd time.Time `json:"lastIntervalEnd,omitzero"`
 }
 
 type Interval struct {
@@ -63,10 +70,10 @@ type ConfigProvider interface {
 
 func NewTimeTrackingService(logger *slog.Logger, dbService *services.DbService, configService ConfigProvider) *TimeTrackingService {
 	return &TimeTrackingService{
-		logger:          logger,
-		dbService:       dbService,
-		configService:   configService,
-		currentBaseline: time.Now(),
+		logger:        logger,
+		dbService:     dbService,
+		configService: configService,
+		appStart:      time.Now(),
 	}
 }
 
@@ -110,35 +117,32 @@ func (g *TimeTrackingService) UpdateDefaultBaselineForNextInterval(ctx context.C
 	g.currentBaseline = baseline
 }
 
-func (g *TimeTrackingService) GetBaselineForNextInterval(ctx context.Context) (time.Time, error) {
+func (g *TimeTrackingService) GetBaselineForNextInterval(ctx context.Context) (IntervalStartBaselines, error) {
 	query := `
 	SELECT interval_end FROM timetracking_intervals ORDER BY interval_start DESC LIMIT 1
 	`
-	var intervalEnd time.Time
+	baselines := IntervalStartBaselines{
+		AppStart: g.appStart,
+		Manual:   g.currentBaseline,
+	}
 
 	rows, err := g.db.Query(query)
 	if err != nil {
-		return intervalEnd, fmt.Errorf("Failed to get time tracking data: %w", err)
+		return baselines, fmt.Errorf("Failed to get time tracking data: %w", err)
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		if err := rows.Scan(&intervalEnd); err != nil {
-			return intervalEnd, fmt.Errorf("scan timetracking_intervals row: %w", err)
+		if err := rows.Scan(&baselines.LastintervalEnd); err != nil {
+			return baselines, fmt.Errorf("scan timetracking_intervals row: %w", err)
 		}
-	} else {
-		return g.currentBaseline, nil
 	}
 
 	if err := rows.Err(); err != nil {
-		return intervalEnd, fmt.Errorf("rows iteration: %w", err)
+		return baselines, fmt.Errorf("rows iteration: %w", err)
 	}
 
-	if g.currentBaseline.Before(intervalEnd) {
-		return intervalEnd, nil
-	} else {
-		return g.currentBaseline, nil
-	}
+	return baselines, nil
 }
 
 func (g *TimeTrackingService) GetRecentActivities(ctx context.Context, daysBack int) ([]string, error) {

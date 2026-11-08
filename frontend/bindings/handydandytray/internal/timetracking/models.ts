@@ -28,6 +28,12 @@ export interface Interval {
     "Activities": { [_ in string]?: number } | null;
 }
 
+export interface IntervalStartBaselines {
+    "appStart"?: string;
+    "manual"?: string;
+    "lastIntervalEnd"?: string;
+}
+
 export interface TimeTrackingStats {
     "Dates": DateStats[] | null;
     "TotalDurationMinutes": number;

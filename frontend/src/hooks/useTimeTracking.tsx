@@ -1,17 +1,19 @@
 import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Interval as RawInterval, TimeTrackingService, TimeTrackingStats } from "../../bindings/handydandytray/internal/timetracking";
-import dayjs, { Dayjs } from "dayjs";
-import { transformDatesToGo, WithDates } from "./dateAdapter";
+import { Interval as RawInterval, IntervalStartBaselines as RawIntervalStartBaselines, TimeTrackingService, TimeTrackingStats } from "../../bindings/handydandytray/internal/timetracking";
+import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
 import { Events } from '@wailsio/runtime';
+import { Dayjs } from "dayjs";
+import dayjs from "../lib/dayjs";
 
 export type Interval = WithDates<RawInterval, "Start" | "End">;
+export type IntervalStartBaselines = WithDates<RawIntervalStartBaselines, "appStart" | "lastIntervalEnd" | "manual">
 
 const convertIntervalToGo = (interval: Interval): RawInterval => {
     return transformDatesToGo(interval, ["Start", "End"])
 }
 
 export type UseTimetracking = {
-    latestIntervalEnd?: Dayjs
+    intervalStartBaselines?: IntervalStartBaselines
     recentActivities?: string[]|null
     addInterval: UseMutateAsyncFunction<void, Error, Interval, unknown>
     isLoading: boolean
@@ -22,6 +24,22 @@ export type UseTimetrackingStats = {
     data?: TimeTrackingStats|null
     isLoading: boolean
     error: Error | null
+}
+
+export const getInitalStartFromBaselines = (baselines?: IntervalStartBaselines): Dayjs => {
+    if (!baselines) {
+        return dayjs()
+    }
+
+    const mostRecentNonAppStart = [baselines.manual, baselines.lastIntervalEnd].filter(v => !!v).reduce<Dayjs|undefined>((current,next) => !current || next!.isAfter(current!) ? next : current, undefined)
+
+    if (mostRecentNonAppStart?.isToday()) {
+        return mostRecentNonAppStart
+    } else if (mostRecentNonAppStart && baselines.appStart?.isToday()) {
+        return baselines.appStart
+    } else {
+        return mostRecentNonAppStart ?? baselines.appStart ?? dayjs()
+    }
 }
 
 export const useTimeTrackingStats = (start?: string, end?: string): UseTimetrackingStats => {
@@ -58,12 +76,12 @@ export const useTimeTracking = (): UseTimetracking => {
         queryClient.invalidateQueries({queryKey: ["timetracking", "most recent end"]})
     })
 
-    const latestIntervalEnd = useQuery({
+    const intervalStartBaselines = useQuery({
             queryKey: ["timetracking", "most recent end"],
             queryFn: async () => {
-                const rawString = await TimeTrackingService.GetBaselineForNextInterval()
+                const rawBaselines = await TimeTrackingService.GetBaselineForNextInterval()
 
-                return dayjs(rawString)
+                return transformDatesFromGo(rawBaselines, ["appStart", "manual", "lastIntervalEnd"])
             },
             //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
             staleTime: Infinity
@@ -85,10 +103,10 @@ export const useTimeTracking = (): UseTimetracking => {
     })
 
     return {
-        latestIntervalEnd: latestIntervalEnd.data,
+        intervalStartBaselines: intervalStartBaselines.data,
         recentActivities: recentActivities.data,
         addInterval: addIntervalMutation.mutateAsync,
-        isLoading: latestIntervalEnd.isPending || recentActivities.isPending,
-        error: latestIntervalEnd.error,
+        isLoading: intervalStartBaselines.isPending || recentActivities.isPending,
+        error: intervalStartBaselines.error,
     }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sortTodos, Todo, _testInternals } from './useTodos';
-import dayjs from 'dayjs';
+import dayjs from "../lib/dayjs"
 
 type SortTodo = {
     createdAt: string

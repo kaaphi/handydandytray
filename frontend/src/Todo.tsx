@@ -5,15 +5,15 @@ import { useForm } from "@mantine/form";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
+import dayjs from "./lib/dayjs"
 import { TodoDateTime, WarnTypes } from "./lib/TodoDateTime";
 import { TickerProvider } from "./lib/TickerContext";
 import { isTodoTab, TodoTab, useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
 import { MarkdownViewer } from "./lib/MarkdownViewer";
 
 import { triggerNotification } from "./lib/notifications";
-import { ErrorBoundary } from "react-error-boundary";
-import { FallbackError } from "./FallbackError";
+import { DefaultErrorBoundary } from "./FallbackError";
 import { RelativeTime } from "./lib/dayjs";
 
 const convertLinkUrl = (url: string): string => {
@@ -381,9 +381,9 @@ export const Todos = () => {
 
 
     return (
-        // 1. Root container fills entire window height and prevents global window scrolling
-        <ErrorBoundary fallback={<FallbackError />}>
+        <DefaultErrorBoundary>
             <TickerProvider>
+                {/* Root container fills entire window height and prevents global window scrolling */ }
                 <Box h="100vh" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Modal opened={addTodoOpened} onClose={closeAddTodo} title={todoToEdit ? "Edit Todo" : "Add Todo"}>
                         <AddEditTodo close={closeAddTodo} todo={todoToEdit} />
@@ -415,6 +415,6 @@ export const Todos = () => {
                     </Tabs>
                 </Box>
             </TickerProvider>
-        </ErrorBoundary>
+        </DefaultErrorBoundary>
     )
 }

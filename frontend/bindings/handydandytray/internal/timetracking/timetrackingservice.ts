@@ -17,7 +17,7 @@ export function AddInterval(interval: $models.Interval | null): $CancellableProm
     return $Call.ByID(3344353005, interval);
 }
 
-export function GetBaselineForNextInterval(): $CancellablePromise<string> {
+export function GetBaselineForNextInterval(): $CancellablePromise<$models.IntervalStartBaselines> {
     return $Call.ByID(2362617915);
 }
 

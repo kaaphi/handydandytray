@@ -8,9 +8,8 @@ import { refreshConfig } from "./lib/config";
 import { UIService } from "../bindings/handydandytray/internal/ui";
 import { Events } from '@wailsio/runtime';
 import { TimeTrackingService } from "../bindings/handydandytray/internal/timetracking";
-import { ErrorBoundary } from "react-error-boundary";
-import dayjs from "dayjs";
-import { FallbackError } from "./FallbackError";
+import dayjs from "./lib/dayjs"
+import { DefaultErrorBoundary } from "./FallbackError";
 
 type NavItemProps = {
     icon: React.ForwardRefExoticComponent<IconProps & React.RefAttributes<SVGSVGElement>>
@@ -114,7 +113,7 @@ export const HandyDandyTray = () => {
     return (
         <AppShell withBorder={false} navbar={{ width: 100, breakpoint: "0" }}>
             <AppShell.Navbar p="xs"><NavBar /></AppShell.Navbar>
-            <AppShell.Main><ErrorBoundary fallback={<FallbackError />}><Outlet /></ErrorBoundary></AppShell.Main>
+            <AppShell.Main><DefaultErrorBoundary><Outlet /></DefaultErrorBoundary></AppShell.Main>
         </AppShell>
     )
 }
