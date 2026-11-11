@@ -18,9 +18,9 @@ const dateStringToGo = (value?: string | Date | null, roundUpToNextDay?: boolean
     }
 }
 
-const defaultDateRange = (): [string, string] => {
+const defaultDateRange = (allowOneDayRange: boolean = false): [string, string] => {
     const startOfWeek = mostRecentDay(Day.Monday)
-    if (startOfWeek.isToday()) {
+    if (startOfWeek.isToday() && !allowOneDayRange) {
         return [startOfWeek.add(-1, "week").format("YYYY-MM-DD"), dayjs().format("YYYY-MM-DD")]
     } else {
         return [startOfWeek.format("YYYY-MM-DD"), dayjs().format("YYYY-MM-DD")]
@@ -186,6 +186,10 @@ type CategoryDonutProps = {
     baseColor: ChartHueTuple
 } & Partial<TimetrackingBreakdownChartProps>
 const CategoryDonut = ({ category, baseColor, ...props }: CategoryDonutProps) => {
+    if (!category.Activities) {
+        return null
+    }
+
     const sortedActivities = [...category.Activities!].sort((a, b) => b.DurationMinutes - a.DurationMinutes)
 
     const chartData: DonutChartCell[] = sortedActivities.map((activity, idx, array) => ({
@@ -201,6 +205,10 @@ const CategoryDonut = ({ category, baseColor, ...props }: CategoryDonutProps) =>
 
 type TimetrackingBreakdownChartProps = DonutChartProps
 const TimetrackingBreakdownChart = ({ ...props }: TimetrackingBreakdownChartProps) => {
+    if (!props.data?.length) {
+        return null
+    }
+    
     const total = props.data.reduce((sum, item) => sum + item.value, 0)
     return (<Stack gap="xs" w={props.size ? props.size * 1.2 : undefined} align="center">
         <DonutChart {...props} tooltipDataSource="segment" tooltipProps={{
@@ -221,12 +229,14 @@ const TimetrackingBreakdownChart = ({ ...props }: TimetrackingBreakdownChartProp
 }
 
 const Today = () => {
-    const dateRange = defaultDateRange()
+    const dateRange = defaultDateRange(true)
     const stats = useTimeTrackingStats(dateStringToGo(dateRange[0]), dateStringToGo(dateRange[1], true))
 
     console.log("Totals by category", stats.data?.TotalsByCategory)
 
-    const chartData: DonutChartCell[] = (stats.data?.TotalsByCategory ?? []).map((category, idx, array) => (
+    const chartData: DonutChartCell[] = (stats.data?.TotalsByCategory ?? [])
+    .filter(category => category.Activities?.length)
+    .map((category, idx, array) => (
         {
             name: category.Name,
             value: category.TotalDurationMinutes,
