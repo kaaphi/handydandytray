@@ -12,5 +12,8 @@ export interface TimeTrackingCategory {
 
 export interface TimeTrackingConfig {
     "DefaultCategory": string;
+    "WeeklyProgressEnabled": boolean;
+    "WeeklyProgressCategories": string[] | null;
+    "WeeklyProgressExpectedMinutes": number;
     "Categories": TimeTrackingCategory[] | null;
 }

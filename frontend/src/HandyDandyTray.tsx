@@ -4,12 +4,12 @@ import { Outlet } from "react-router";
 import { NavLink as RouterNavLink, NavLinkProps as RouterNavLinkProps } from 'react-router';
 import { triggerNotification } from "./lib/notifications";
 import { randomId } from "@mantine/hooks";
-import { refreshConfig } from "./lib/config";
 import { UIService } from "../bindings/handydandytray/internal/ui";
 import { Events } from '@wailsio/runtime';
 import { TimeTrackingService } from "../bindings/handydandytray/internal/timetracking";
-import dayjs from "./lib/dayjs"
+import dayjs from "./lib/dayjs";
 import { DefaultErrorBoundary } from "./FallbackError";
+import { useConfig } from "./hooks/useConfig";
 
 type NavItemProps = {
     icon: React.ForwardRefExoticComponent<IconProps & React.RefAttributes<SVGSVGElement>>
@@ -41,41 +41,45 @@ const NavBar = () => {
     )
 }
 
-const ConfigMenu = () => (
-    <Menu offset={-10}>
-        <Menu.Target>
-            <ActionIcon variant="white" size="xs" color="black"><ListIcon /></ActionIcon>
-        </Menu.Target>
+const ConfigMenu = () => {
+    const { reload: reloadConfig } = useConfig()
 
-        <Menu.Dropdown>
-            <Menu.Item onClick={() => UIService.OpenEnterTimeWindow()}>Enter time now...</Menu.Item>
-            <Menu.Sub>
-                <Menu.Sub.Target>
-                    <Menu.Sub.Item>Time tracking</Menu.Sub.Item>
-                </Menu.Sub.Target>
+    return (
+        <Menu offset={-10}>
+            <Menu.Target>
+                <ActionIcon variant="white" size="xs" color="black"><ListIcon /></ActionIcon>
+            </Menu.Target>
 
-                <Menu.Sub.Dropdown>
-                    <Menu.Item onClick={() => {
-                        TimeTrackingService.UpdateDefaultBaselineForNextInterval(dayjs().toISOString())
-                        Events.Emit("timetracking:baselineUpdated")
-                    }}>Set next interval start to now</Menu.Item>
-                </Menu.Sub.Dropdown>
-            </Menu.Sub>
-            <Menu.Divider />
-            <Menu.Sub>
-                <Menu.Sub.Target>
-                    <Menu.Sub.Item>Config</Menu.Sub.Item>
-                </Menu.Sub.Target>
+            <Menu.Dropdown>
+                <Menu.Item onClick={() => UIService.OpenEnterTimeWindow()}>Enter time now...</Menu.Item>
+                <Menu.Sub>
+                    <Menu.Sub.Target>
+                        <Menu.Sub.Item>Time tracking</Menu.Sub.Item>
+                    </Menu.Sub.Target>
 
-                <Menu.Sub.Dropdown>
-                    <Menu.Item onClick={refreshConfig}>Refresh config</Menu.Item>
-                </Menu.Sub.Dropdown>
-            </Menu.Sub>
-            <Menu.Divider />
-            <Menu.Item onClick={UIService.QuitApp}>Quit</Menu.Item>
-        </Menu.Dropdown>
-    </Menu>
-)
+                    <Menu.Sub.Dropdown>
+                        <Menu.Item onClick={() => {
+                            TimeTrackingService.UpdateDefaultBaselineForNextInterval(dayjs().toISOString())
+                            Events.Emit("timetracking:baselineUpdated")
+                        }}>Set next interval start to now</Menu.Item>
+                    </Menu.Sub.Dropdown>
+                </Menu.Sub>
+                <Menu.Divider />
+                <Menu.Sub>
+                    <Menu.Sub.Target>
+                        <Menu.Sub.Item>Config</Menu.Sub.Item>
+                    </Menu.Sub.Target>
+
+                    <Menu.Sub.Dropdown>
+                        <Menu.Item onClick={() => reloadConfig()}>Refresh config</Menu.Item>
+                    </Menu.Sub.Dropdown>
+                </Menu.Sub>
+                <Menu.Divider />
+                <Menu.Item onClick={UIService.QuitApp}>Quit</Menu.Item>
+            </Menu.Dropdown>
+        </Menu>
+    )
+}
 
 const DevMenu = () => {
     if (import.meta.env.DEV) {
