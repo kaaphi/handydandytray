@@ -1,7 +1,7 @@
-import { ColorSwatch, DataList, DataListItem, DataListItemLabel, DataListItemValue, Group, ScrollArea, SimpleGrid, Stack, Table, Tabs, Title } from "@mantine/core";
+import { ColorSwatch, DataList, DataListItem, DataListItemLabel, DataListItemValue, Group, Progress, ScrollArea, SimpleGrid, Stack, Table, Tabs, Text, Title } from "@mantine/core";
 import { DonutChart, DonutChartCell, DonutChartProps, SankeyChart, SankeyChartData, SankeyChartProps } from '@mantine/charts';
 import { DatePickerInput, DatesRangeValue } from "@mantine/dates";
-import dayjs from "./lib/dayjs"
+import dayjs from "./lib/dayjs";
 import React, { useState } from "react";
 import { useTimeTrackingStats } from "./hooks/useTimeTracking";
 import { Day, mostRecentDay, transformDateToGo } from "./hooks/dateAdapter";
@@ -9,6 +9,7 @@ import { Category, TimeTrackingStats } from "../bindings/handydandytray/internal
 import { ChartHueTuple, chartPaletteHue, chartHueColor } from "./lib/theme";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { formatHourMinuteDuration } from "./lib/dayjs";
+import { useConfig } from "./hooks/useConfig";
 
 const dateStringToGo = (value?: string | Date | null, roundUpToNextDay?: boolean): string | undefined => {
     if (value) {
@@ -228,6 +229,34 @@ const TimetrackingBreakdownChart = ({ ...props }: TimetrackingBreakdownChartProp
     )
 }
 
+
+type WeekProgress = {
+    stats?: TimeTrackingStats|null
+}
+const WeekProgress = ({stats}:WeekProgress) => {
+    const {config} = useConfig()
+
+    if (!config?.Timetracking.WeeklyProgressEnabled) {
+        return null
+    } else {
+        const expected = config?.Timetracking?.WeeklyProgressExpectedMinutes
+        const total = stats?.TotalsByCategory
+            ?.filter(c => config?.Timetracking?.WeeklyProgressCategories?.includes(c.Name))
+            ?.reduce((total, category) => total + category.TotalDurationMinutes, 0) 
+            ?? 0
+        const percent = total/expected*100
+        return (
+            <Stack gap="2">
+            <Progress size="xl" value={percent} />
+            <Text ta="center" size="md" c="dimmed" fw={500}>
+                {Math.round(percent)}% of {Math.round(expected/60 * 10) / 10} hours 
+                for {config?.Timetracking?.WeeklyProgressCategories?.join(", ")}
+            </Text>
+            </Stack>
+        )
+    }
+}
+
 const Today = () => {
     const dateRange = defaultDateRange(true)
     const stats = useTimeTrackingStats(dateStringToGo(dateRange[0]), dateStringToGo(dateRange[1], true))
@@ -248,9 +277,10 @@ const Today = () => {
     const todayStats = dayjs(lastStats?.Date).isToday() ? lastStats : undefined
 
     return (
-        <Stack gap="sm" pt="md" pb="md">
+        <Stack pt="md" pb="md">
             <SimpleGrid minColWidth={200} >
-                <DataList size="xl" fw={700} p="lg">
+                <Stack w="fit-content" gap="md" p="lg">
+                <DataList size="xl" fw={700}>
                     <DataListItem>
                         <DataListItemLabel>Total</DataListItemLabel>
                         <DataListItemValue>{formatHourMinuteDuration(stats.data?.TotalDurationMinutes)}</DataListItemValue>
@@ -260,6 +290,8 @@ const Today = () => {
                         <DataListItemValue>{formatHourMinuteDuration(todayStats?.TotalDurationMinutes)}</DataListItemValue>
                     </DataListItem>
                 </DataList>
+                <WeekProgress stats={stats.data} />
+                </Stack>
                 <TimetrackingBreakdownChart data={chartData} chartLabel="categories" size={150} />
                 {stats.data?.TotalsByCategory?.map((category, idx, array) => (
                     <CategoryDonut category={category} baseColor={chartPaletteHue(idx, array.length)} size={150} />
@@ -282,7 +314,7 @@ export const TimeTracking = () => {
 
 
                 <Tabs.Panel value="today" style={{ flex: 1, minHeight: 0 }}>
-                    <ScrollArea h="100%">
+                    <ScrollArea h="100%" scrollbars="y">
                         <Today />
                     </ScrollArea>
                 </Tabs.Panel>

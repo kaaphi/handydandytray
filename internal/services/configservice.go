@@ -16,8 +16,11 @@ type ConfigService interface {
 }
 
 type TimeTrackingConfig struct {
-	DefaultCategory string
-	Categories      []TimeTrackingCategory
+	DefaultCategory               string
+	WeeklyProgressEnabled         bool
+	WeeklyProgressCategories      []string
+	WeeklyProgressExpectedMinutes int
+	Categories                    []TimeTrackingCategory
 }
 
 type TimeTrackingCategory struct {
