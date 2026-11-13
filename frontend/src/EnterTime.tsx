@@ -3,15 +3,15 @@ import { formRootRule, useForm } from "@mantine/form";
 import { randomId } from "@mantine/hooks";
 import { ArrowsClockwiseIcon, ClockClockwiseIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Dayjs } from "dayjs";
-import dayjs from "./lib/dayjs"
+import dayjs from "./lib/dayjs";
 import { useEffect, useState, type ReactNode } from "react";
 import { Events } from '@wailsio/runtime';
 import { DateTimePicker, DateTimePickerProps } from "@mantine/dates";
 import { getInitalStartFromBaselines, IntervalStartBaselines, useTimeTracking } from "./hooks/useTimeTracking";
-import { UIService } from "../bindings/handydandytray/internal/ui";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { ConditionalWrapper } from "./lib/ConditionalWrapper";
 import { formatHourMinuteDuration } from "./lib/dayjs";
+import { UIService } from "../bindings/handydandytray/internal/ui";
 
 type FormValue = {
     entries: EntryFormValue[],
@@ -147,7 +147,6 @@ const categoryFilter = ({options, search}) => {
 
 const EnterTimeForm = ({ startBaselines, initialEnd }: EnterTimeFormProps) => {
     const initialStart = getInitalStartFromBaselines(startBaselines).startOf("minute")
-    console.log("Baselines", startBaselines, "initialStart", initialStart)
 
     const timetracking = useTimeTracking()
 
@@ -226,9 +225,10 @@ const EnterTimeForm = ({ startBaselines, initialEnd }: EnterTimeFormProps) => {
             <Stack align="stretch" justify="space-between" h="100vh" p="xs" >
                 <Group align="start" justify="space-between" wrap="nowrap">
                         <Stack>
-                        {entries.map((_, index) => (
-                            <Group align="start">
+                        {entries.map((item, index) => (
+                            <Group align="start" key={item.key}>
                                 <ActionIcon pt={4} tabIndex={1} variant="subtle" onClick={() => {
+                                    console.log("Deleting entry control", index)
                                     form.removeListItem('entries', index)
                                     syncTransformedValues()
                                 }}><TrashIcon /></ActionIcon>
@@ -239,14 +239,21 @@ const EnterTimeForm = ({ startBaselines, initialEnd }: EnterTimeFormProps) => {
                                     selectFirstOptionOnChange
                                     autoSelectOnBlur 
                                     tabIndex={1}
-                                    key={form.key(`entries.${index}.activity`)}
                                     placeholder="Activity"
                                     data={timetracking.recentActivities ?? undefined}
                                     loading={timetracking.isLoading}
+                                    key={form.key(`entries.${index}.activity`)}
                                     {...form.getInputProps(`entries.${index}.activity`)}
                                 />
-                                <TextInput tabIndex={1} key={form.key(`entries.${index}.duration`)} placeholder="Duration" {...form.getInputProps(`entries.${index}.duration`)} />
-                                <Text pt={4} w="5em">{formatHourMinuteDuration(transformedValues.entries[index]?.duration)}</Text>
+                                <TextInput 
+                                    tabIndex={1}
+                                    placeholder="Duration"
+                                    key={form.key(`entries.${index}.duration`)}
+                                    {...form.getInputProps(`entries.${index}.duration`)}
+                                />
+                                <Text pt={4} w="5em">
+                                    {formatHourMinuteDuration(transformedValues.entries[index]?.duration)}
+                                </Text>
                             </Group>
                         ))}
                         {form.errors.entries && (
