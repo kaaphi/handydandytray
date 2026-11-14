@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"handydandytray/internal/logging"
 	"handydandytray/internal/services"
 	"handydandytray/internal/timetracking"
 	"handydandytray/internal/todo"
@@ -35,11 +36,7 @@ func init() {
 }
 
 func main() {
-	logLevel := new(slog.LevelVar)
-	logLevel.Set(slog.LevelInfo)
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
+	flightRecorderService := logging.NewFlightRecorderService(512 * 1024)
 
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
@@ -50,7 +47,7 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
-		Logger: logger,
+		Logger: flightRecorderService.CreateLogger(),
 	})
 
 	scheduler, err := services.NewScheduler()
@@ -73,6 +70,10 @@ func main() {
 	timeTrackingService := timetracking.NewTimeTrackingService(app.Logger, dbService, configService)
 
 	app.RegisterService(
+		application.NewService(flightRecorderService),
+	)
+
+	app.RegisterService(
 		application.NewService(configService),
 	)
 
@@ -93,7 +94,7 @@ func main() {
 	)
 
 	menu := app.NewMenu()
-	appendDevMenu(app, menu, todoService, uiService, logLevel)
+	appendDevMenu(app, menu, todoService, flightRecorderService)
 	menu.Add("Enter time now...").OnClick(func(ctx *application.Context) {
 		uiService.OpenEnterTimeWindow()
 	})
@@ -137,7 +138,7 @@ func getPath(app *application.App, prodPath string, devPath string) string {
 	}
 }
 
-func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService, uiService *ui.UIService, logLevel *slog.LevelVar) {
+func appendDevMenu(app *application.App, menu *application.Menu, todoService *todo.TodoService, flightRecorderService *logging.FlightRecorderService) {
 	if !app.Env.Info().Debug {
 		return
 	}
@@ -149,9 +150,9 @@ func appendDevMenu(app *application.App, menu *application.Menu, todoService *to
 
 	devMenu.AddCheckbox("Debug Logs", false).OnClick(func(ctx *application.Context) {
 		if ctx.ClickedMenuItem().Checked() {
-			logLevel.Set(slog.LevelDebug)
+			flightRecorderService.SetLogLevel(slog.LevelDebug)
 		} else {
-			logLevel.Set(slog.LevelInfo)
+			flightRecorderService.SetLogLevel(slog.LevelInfo)
 		}
 	})
 	devMenu.Add("Trigger Random Reminder").OnClick(func(ctx *application.Context) {

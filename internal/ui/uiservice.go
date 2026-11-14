@@ -2,9 +2,12 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"handydandytray/internal/assets"
 	"handydandytray/internal/services"
 	"image/color"
+	"os"
+	"path/filepath"
 	"time"
 	"uuid"
 
@@ -232,6 +235,17 @@ func (g *UIService) SnoozeEnterTime() {
 	if err != nil {
 		g.app.Logger.Error("Failed to snooze enter time!", "error", err)
 	}
+}
+
+// ShowInFolder opens the native file explorer and selects the target file.
+func (u *UIService) ShowInFolder(filePath string) error {
+	cleanPath := filepath.Clean(filePath)
+
+	if _, err := os.Stat(cleanPath); err != nil {
+		return fmt.Errorf("target path does not exist: %w", err)
+	}
+
+	return u.app.Env.OpenFileManager(cleanPath, true)
 }
 
 func (g *UIService) QuitApp() {

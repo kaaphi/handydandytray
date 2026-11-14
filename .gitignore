@@ -16,3 +16,4 @@ build/android/gen/
 test_config.toml
 foo_test.go
 local_todo.md
+dump_*.log
