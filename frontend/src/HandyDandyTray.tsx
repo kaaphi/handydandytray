@@ -10,6 +10,7 @@ import { TimeTrackingService } from "../bindings/handydandytray/internal/timetra
 import dayjs from "./lib/dayjs";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { useConfig } from "./hooks/useConfig";
+import { useState } from "react";
 
 type NavItemProps = {
     icon: React.ForwardRefExoticComponent<IconProps & React.RefAttributes<SVGSVGElement>>
@@ -35,7 +36,7 @@ const NavBar = () => {
                 </Stack>
             </AppShell.Section>
             <AppShell.Section>
-                <DevMenu />
+                {import.meta.env.DEV && <DevMenu />}
             </AppShell.Section>
         </>
     )
@@ -82,35 +83,48 @@ const ConfigMenu = () => {
 }
 
 const DevMenu = () => {
-    if (import.meta.env.DEV) {
-        return (
+    const [persistentTextNotifications, setPersistentTextNotifications] = useState<boolean>(true)
+    const textNotificationType = persistentTextNotifications ? "persistentText" : "text"
 
-            <Menu>
-                <Menu.Target>
-                    <BoxNavItem icon={BugIcon} />
-                </Menu.Target>
-                <Menu.Dropdown>
-                    <Menu.Item onClick={() =>
-                        triggerNotification({
-                            type: "text",
-                            props: {
-                                title: `Text Notification ${randomId()}`,
-                                text: randomId()
-                            }
-                        })
-                    }>Trigger Text Notification</Menu.Item>
-                    <Menu.Item onClick={() =>
-                        triggerNotification({
-                            type: "enterTime"
-                        })
-                    }>Trigger Enter Time</Menu.Item>
-                    <Menu.CheckboxItem onChange={UIService.SetIconBadgeAlert}>Systray alert</Menu.CheckboxItem>
-                </Menu.Dropdown>
-            </Menu>
-        )
-    } else {
-        return null
-    }
+    return (
+        <Menu>
+            <Menu.Target>
+                <BoxNavItem icon={BugIcon} />
+            </Menu.Target>
+            <Menu.Dropdown>
+                <Menu.CheckboxItem checked={persistentTextNotifications} onChange={setPersistentTextNotifications}>
+                    Persistent text notifications
+                </Menu.CheckboxItem>
+                <Menu.Item onClick={() =>
+                    triggerNotification({
+                        type: textNotificationType,
+                        props: {
+                            title: `Text Notification`,
+                            text: randomId()
+                        }
+                    })
+                }>Trigger Text Notification</Menu.Item>
+                <Menu.Item onClick={() =>
+                    triggerNotification({
+                        type: "enterTime"
+                    })
+                }>Trigger Enter Time</Menu.Item>
+                <Menu.Item onClick={() => {
+                    triggerNotification({
+                        type: "enterTime"
+                    })
+                    triggerNotification({
+                        type: textNotificationType,
+                        props: {
+                            title: `Text Notification ${randomId()}`,
+                            text: randomId()
+                        }
+                    })
+                }}>Trigger Both</Menu.Item>
+                <Menu.CheckboxItem onChange={UIService.SetIconBadgeAlert}>Systray alert</Menu.CheckboxItem>
+            </Menu.Dropdown>
+        </Menu>
+    )
 }
 
 export const HandyDandyTray = () => {
