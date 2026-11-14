@@ -41,6 +41,13 @@ export function SetSysTrayMenu(menu: application$0.Menu | null): $CancellablePro
     return $Call.ByID(1240032767, menu);
 }
 
+/**
+ * ShowInFolder opens the native file explorer and selects the target file.
+ */
+export function ShowInFolder(filePath: string): $CancellablePromise<void> {
+    return $Call.ByID(2901514335, filePath);
+}
+
 export function ShowNotification(notificationType: string, props: { [_ in string]?: string } | null): $CancellablePromise<void> {
     return $Call.ByID(4076913915, notificationType, props);
 }

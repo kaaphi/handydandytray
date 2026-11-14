@@ -1,5 +1,5 @@
-import { ActionIcon, AppShell, Box, Menu, NavLink, NavLinkProps, Stack } from "@mantine/core";
-import { BugIcon, ClockUserIcon, IconProps, ListChecksIcon, ListIcon } from "@phosphor-icons/react";
+import { ActionIcon, AppShell, Box, Button, Code, Menu, Modal, NavLink, NavLinkProps, Stack } from "@mantine/core";
+import { BugIcon, ClockUserIcon, FolderIcon, IconProps, ListChecksIcon, ListIcon } from "@phosphor-icons/react";
 import { Outlet } from "react-router";
 import { NavLink as RouterNavLink, NavLinkProps as RouterNavLinkProps } from 'react-router';
 import { triggerNotification } from "./lib/notifications";
@@ -10,7 +10,8 @@ import { TimeTrackingService } from "../bindings/handydandytray/internal/timetra
 import dayjs from "./lib/dayjs";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { useConfig } from "./hooks/useConfig";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { FlightRecorderService } from "../bindings/handydandytray/internal/logging";
 
 type NavItemProps = {
     icon: React.ForwardRefExoticComponent<IconProps & React.RefAttributes<SVGSVGElement>>
@@ -44,8 +45,24 @@ const NavBar = () => {
 
 const ConfigMenu = () => {
     const { reload: reloadConfig } = useConfig()
+    const [logDumpLocation, setLogDumpLocation] = useState<string | null>(null)
 
-    return (
+    const dumpLogs = useCallback(async () => {
+        setLogDumpLocation(await FlightRecorderService.Dump())
+    }, [setLogDumpLocation])
+
+
+    return (<>
+        <Modal opened={!!logDumpLocation} onClose={() => setLogDumpLocation(null)} title="Logs dumped to:">
+            <Stack>
+                <Code block>{logDumpLocation}</Code>
+                <Button leftSection={<FolderIcon />} variant="light" onClick={async () => {
+                    await UIService.ShowInFolder(logDumpLocation!)
+                    setLogDumpLocation(null)
+                }}>Show in folder</Button>
+            </Stack>
+
+        </Modal>
         <Menu offset={-10}>
             <Menu.Target>
                 <ActionIcon variant="white" size="xs" color="black"><ListIcon /></ActionIcon>
@@ -73,12 +90,14 @@ const ConfigMenu = () => {
 
                     <Menu.Sub.Dropdown>
                         <Menu.Item onClick={() => reloadConfig()}>Refresh config</Menu.Item>
+                        <Menu.Item onClick={dumpLogs}>Dump logs</Menu.Item>
                     </Menu.Sub.Dropdown>
                 </Menu.Sub>
                 <Menu.Divider />
                 <Menu.Item onClick={UIService.QuitApp}>Quit</Menu.Item>
             </Menu.Dropdown>
         </Menu>
+    </>
     )
 }
 
