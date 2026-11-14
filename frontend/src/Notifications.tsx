@@ -3,7 +3,7 @@ import { AutoResizeContainer } from "./lib/AutoResizeContainer";
 import { Button, CloseButton, Group, Paper, Space, Stack, Text } from "@mantine/core";
 import { Events } from '@wailsio/runtime';
 import PawIcon from './assets/paw-icon.svg?react';
-import { useListState, useMap } from "@mantine/hooks";
+import { randomId, useListState, useMap } from "@mantine/hooks";
 import { UIService } from "../bindings/handydandytray/internal/ui";
 import { useTodo } from "./hooks/useTodos";
 import { marked } from "marked";
@@ -137,9 +137,13 @@ type NotificationSpecification = {
 }
 
 const notificationTypes = {
-    text: {
+    persistentText: {
         component: TextNotification,
         persistent: true,
+    },
+    text: {
+        component: TextNotification,
+        persistent: false,
     },
     todo: {
         component: TodoNotification,
@@ -152,38 +156,43 @@ const notificationTypes = {
     }
 } satisfies Record<string, NotificationSpecification>
 
+export type NotificationType = keyof typeof notificationTypes
+
 export type NotificationEventData = {
-    type: keyof typeof notificationTypes,
+    type: NotificationType,
     props?: Record<string, string>,
 }
 
+type NotificationData = {
+    key: string
+} & NotificationEventData
+
 export const Notifications = () => {
-    const [notifications, notificationsHandlers] = useListState<NotificationEventData>([])
-    const singletonNotifications = useMap<NotificationSingletonType, NotificationEventData>()
+    const [notifications, notificationsHandlers] = useListState<NotificationData>([])
+    const singletonNotifications = useMap<NotificationSingletonType, NotificationData>()
 
     useEffect(() => {
-        let canceled = false
-
         const unsubscribe = Events.On("notification:showNotification", (event) => {
             const notificationEvent = event.data as NotificationEventData;
             console.log("Got notification event!", notificationEvent)
 
             const type: NotificationSpecification = notificationTypes[notificationEvent.type]
+            const notificationData = {key: randomId(), ...notificationEvent}
 
             if (type.singletonType) {
-                singletonNotifications.set(type.singletonType!, notificationEvent)
+                singletonNotifications.set(type.singletonType!, notificationData)
                 if (!type.persistent) {
                     setTimeout(() => {
-                        if (canceled) return;
                         singletonNotifications.delete(type.singletonType!)
                     }, NOTIFICATION_TIMEOUT_MS)
                 }
             } else {
-                notificationsHandlers.append(notificationEvent)
+                console.log("Added notification", notificationData.key)
+                notificationsHandlers.append(notificationData)
                 if (!type.persistent) {
-                    setTimeout(() => {
-                        if (canceled) return;
-                        notificationsHandlers.filter((item) => item !== notificationEvent)
+                    setTimeout(() => {            
+                        console.log("Removing notification", notificationData.key)            
+                        notificationsHandlers.filter((item) => item.key !== notificationData.key)
                     }, NOTIFICATION_TIMEOUT_MS)
                 }
             }
@@ -192,7 +201,6 @@ export const Notifications = () => {
         });
 
         return () => {
-            canceled = true
             unsubscribe() // Clean up listener on unmount
         };
     }, [notificationsHandlers, singletonNotifications])
