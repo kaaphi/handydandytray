@@ -164,7 +164,7 @@ func (g *TodoService) getNextDueAlert(ctx context.Context) (*time.Time, bool, er
 		return nil, false, fmt.Errorf("failed to query todos: %w", err)
 	}
 
-	now := time.Now()
+	now := time.Now().Add(1 * time.Second) //add a buffer to make sure we alert even if the schedule fires a bit early
 	hasPastDue := false
 	var result time.Time
 
@@ -184,9 +184,10 @@ func (g *TodoService) getNextDueAlert(ctx context.Context) (*time.Time, bool, er
 		if todo.DueAt != "" {
 			dueTime, err := time.Parse("2006-01-02", todo.DueAt)
 			if err != nil {
-				return nil, false, err
+				g.logger.Error("Failed to parse dueAt!", "DueAt", todo.DueAt)
+			} else {
+				updateResult(dueTime)
 			}
-			updateResult(dueTime)
 		}
 	}
 
