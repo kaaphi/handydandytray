@@ -153,15 +153,18 @@ const SetReminderMenu = ({children, showClearReminder, onSetReminder, onChange =
         onChange(true)
     }, [setCustomOpened, onChange])
 
+    const devOptions = !import.meta.env.DEV ? [] : [
+         { value: dayjs().add(10, 'second'), label: "10 Seconds" },
+    ]
+
     const options = [
         { value: dayjs().add(15, 'minute'), label: "15 Minutes" },
         { value: dayjs().add(30, 'minute'), label: "30 Minutes" },
         { value: dayjs().add(1, 'hour'), label: "1 Hour" },
         { value: dayjs().add(3, 'hour'), label: "3 Hours" },
         { value: dayjs().add(1, 'day').set("hour", 6).set("minute", 30).set("second", 0), label: "Tomorrow at 6:30" },
+        ...devOptions
     ]
-
-
 
     return (<>
     <Modal title="Set Reminder" opened={customOpened} onClose={closeCustom}>
