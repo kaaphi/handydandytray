@@ -62,10 +62,10 @@ const ReminderInput = ({ value, defaultValue, onChange, error }: ReminderInputPr
     });
 
     return (<>
-        <SetReminderMenu onSetReminder={(reminder) => { setValue(reminder) }} showClearReminder={!!_value}>
+        <SetReminderMenu currentReminder={_value} onSetReminder={(reminder) => { setValue(reminder) }} showClearReminder={!!_value}>
             <Anchor>
                 {_value ? (
-                    <>Edit reminder (<RelativeTime time={dayjs(_value)} />)</>
+                    <>Edit reminder (<RelativeTime time={_value} />)</>
                 ) : (
                     "Add reminder"
                 )}
@@ -160,25 +160,26 @@ const AddEditTodo = ({ close, todo }: AddEditTodoProps) => {
 }
 
 type SetReminderMenuProps = {
-    children: React.ReactNode,
+    children: React.ReactNode
     showClearReminder?: boolean
     onSetReminder: (remider?: Dayjs) => void
     onChange?: (opened: boolean) => void
+    currentReminder?: Dayjs
 } & MenuProps
-const SetReminderMenu = ({ children, showClearReminder, onSetReminder, onChange = _ => { }, ...menuProps }: SetReminderMenuProps) => {
+const SetReminderMenu = ({ children, showClearReminder, onSetReminder, currentReminder, onChange = _ => { }, ...menuProps }: SetReminderMenuProps) => {
     const [customOpened, setCustomOpened] = useState(false)
-    const [customDate, setCustomDate] = useState<string | null>(dayjs().format("YYYY-MM-DD"));
-    const [customTime, setCustomTime] = useState("");
+    const [customDate, setCustomDate] = useState<string | null>((currentReminder ?? dayjs()).format("YYYY-MM-DD"));
+    const [customTime, setCustomTime] = useState(currentReminder?.format("HH:mm") ?? "");
     const closeCustom = useCallback(() => {
         setCustomOpened(false)
         onChange(false)
-        setCustomDate(dayjs().format("YYYY-MM-DD"))
-        setCustomTime("")
+        setCustomDate((currentReminder ?? dayjs()).format("YYYY-MM-DD"))
+        setCustomTime(currentReminder?.format("HH:mm") ?? "")
     }, [setCustomOpened, onChange, setCustomDate, setCustomTime])
     const openCustom = useCallback(() => {
         setCustomOpened(true)
         onChange(true)
-    }, [setCustomOpened, onChange])
+    }, [setCustomOpened, onChange, currentReminder])
 
     const devOptions = !import.meta.env.DEV ? [] : [
         { value: dayjs().add(10, 'second'), label: "10 Seconds" },
@@ -294,7 +295,7 @@ const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItem
                             todo.completedAt = isCompleted ? undefined : dayjs()
                             todos.updateTodo(todo)
                         }}>{isCompleted ? <ArrowUUpLeftIcon /> : <CheckIcon />}</ActionIcon>
-                        {!isCompleted && <SetReminderMenu onChange={updateKeepActive} onSetReminder={setReminder} showClearReminder={!!todo.remindMeAt}><ActionIcon size="sm" variant="subtle"><ClockIcon /></ActionIcon></SetReminderMenu>}
+                        {!isCompleted && <SetReminderMenu onChange={updateKeepActive} currentReminder={todo.remindMeAt} onSetReminder={setReminder} showClearReminder={!!todo.remindMeAt}><ActionIcon size="sm" variant="subtle"><ClockIcon /></ActionIcon></SetReminderMenu>}
                         {isCompleted && <ActionIcon size="sm" variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon /></ActionIcon>}
                         {!isCompleted && <Menu onChange={updateKeepActive}>
                             <Menu.Target>
