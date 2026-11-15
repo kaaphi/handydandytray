@@ -10,6 +10,7 @@ import { ChartHueTuple, chartPaletteHue, chartHueColor } from "./lib/theme";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { formatHourMinuteDuration } from "./lib/dayjs";
 import { useConfig } from "./hooks/useConfig";
+import { Dayjs } from "dayjs";
 
 const dateStringToGo = (value?: string | Date | null, roundUpToNextDay?: boolean): string | undefined => {
     if (value) {
@@ -19,13 +20,26 @@ const dateStringToGo = (value?: string | Date | null, roundUpToNextDay?: boolean
     }
 }
 
-const defaultDateRange = (allowOneDayRange: boolean = false): [string, string] => {
+const defaultDateRange = (allowOneDayRange: boolean = false): [string, string] => 
+    buildDateRange(_ => mostRecentStartOfWeek(allowOneDayRange))
+
+const mostRecentStartOfWeek = (includeToday: boolean = false): Dayjs => {
     const startOfWeek = mostRecentDay(Day.Monday)
-    if (startOfWeek.isToday() && !allowOneDayRange) {
-        return [startOfWeek.add(-1, "week").format("YYYY-MM-DD"), dayjs().format("YYYY-MM-DD")]
+    if (startOfWeek.isToday() && !includeToday) {
+        return startOfWeek.add(-1, "week")
     } else {
-        return [startOfWeek.format("YYYY-MM-DD"), dayjs().format("YYYY-MM-DD")]
+        return startOfWeek
     }
+}
+
+type DateShift = (anchor: Dayjs) => Dayjs
+
+const buildDateRange = (start: DateShift, end: DateShift = d => d): [string,string] => {
+    const now = dayjs()
+    return [
+        start(now).format("YYYY-MM-DD"),
+        end(now).format("YYYY-MM-DD")
+    ]
 }
 
 type DataStatsTableRowProps = {
@@ -123,6 +137,18 @@ const TimeTrackingHistory = () => {
                 value={dateRange}
                 onChange={setDateRange}
                 valueFormat="YYYY/MM/DD"
+                highlightToday
+                presets={[
+                    {label:"Week to date", value:defaultDateRange()},
+                    {label:"Month to date", value:buildDateRange(d => d.startOf("month"))},
+                    {label:"Year to date", value:buildDateRange(d => d.startOf("year"))},
+                    {label:"Last week", value:buildDateRange(d => d.add(-1, "week"))},
+                    {label:"Last month", value:buildDateRange(d => d.add(-1, "month"))},
+                    {label:"Last year", value:buildDateRange(d => d.add(-1, "year"))},
+                    {label:"Previous week", value:buildDateRange(d => mostRecentStartOfWeek(true).add(-1, "week"), d => mostRecentStartOfWeek(true).add(-1, "day"))},
+                    {label:"Previous month", value:buildDateRange(d => d.startOf("month").add(-1, "month"), d => d.startOf("month").add(-1, "day"))},
+                    {label:"Previous year", value:buildDateRange(d => d.startOf("year").add(-1, "year"), d => d.startOf("year").add(-1, "day"))},
+                ]}
             /></Group>
             <Title order={5}>Total Duration: {formatHourMinuteDuration(stats.data?.TotalDurationMinutes)}</Title>
             <TimeTrackingSankey timeTrackingData={stats.data} valueFormatType="percent" pr="md" />
@@ -158,7 +184,10 @@ const chartValueFormatter = (type: TimeTrackingFormatterTypes, total: number): (
 }
 
 const TimeTrackingSankey = ({ timeTrackingData, valueFormatType = "duration", ...props }: TimeTrackingChartProps & Partial<SankeyChartProps>) => {
-    
+    if (!timeTrackingData?.Dates?.length) {
+        return null
+    }
+
     const sankeyData: SankeyChartData = {
         nodes: [{ name: "total", color: "gray.6" }],
         links: []
