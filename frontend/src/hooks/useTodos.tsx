@@ -2,7 +2,7 @@ import { UseMutateAsyncFunction, useMutation, useQuery, useQueryClient } from "@
 import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bindings/handydandytray/internal/todo";
 import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
 import { Dayjs } from "dayjs";
-import dayjs from "../lib/dayjs"
+import dayjs from "../lib/dayjs";
 
 export type UseTodos = {
     todos: Todo[]
@@ -107,7 +107,7 @@ const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): TodoSortDetails =
  * @param now the current time
  * @returns a negative value if the first argument is less than the second argument, zero if they're equal, and a positive value otherwise
  */
-const compareActiveTodoForSort = (a: Todo, b: Todo, now: Dayjs): number => {
+export const compareActiveTodoForSort = (a: Todo, b: Todo, now: Dayjs): number => {
     const aOrder = buildSortArray(calculateActiveTodoSortOrder(a, now))
     const bOrder = buildSortArray(calculateActiveTodoSortOrder(b, now))
 
@@ -140,8 +140,12 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         queryKey: queryKey,
         queryFn: async () => {
             const rawTodos = await queryFunction()
-
-            return rawTodos?.map((todo) => convertTodoFromGo(todo))
+            const convertedTodos = rawTodos?.map((todo) => convertTodoFromGo(todo))
+            if (completedTodos) {
+                return convertedTodos
+            } else {
+                return convertedTodos ? sortTodos(convertedTodos) : convertedTodos
+            }
         },
         //Because only the Todo window is reading and modifying this data, we don't ever have to refresh the cache
         //If we have multiple windows accessing this data, we'll have to emit an event for other windows to listen to so they can invalidate their cache
@@ -174,7 +178,7 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
 
     return {
         todos: todosQuery.data ?? [],
-        isLoading: todosQuery.isLoading || createTodoMutation.isPending || deleteTodoMutation.isPending,
+        isLoading: todosQuery.isFetching || createTodoMutation.isPending || deleteTodoMutation.isPending,
         error: todosQuery.error ?? createTodoMutation.error,
         createTodo: createTodoMutation.mutateAsync,
         deleteTodo: deleteTodoMutation.mutateAsync,
