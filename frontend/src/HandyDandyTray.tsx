@@ -1,6 +1,6 @@
 import { ActionIcon, AppShell, Box, Button, Code, Menu, Modal, NavLink, NavLinkProps, Stack } from "@mantine/core";
 import { BugIcon, ClockUserIcon, FolderIcon, IconProps, ListChecksIcon, ListIcon } from "@phosphor-icons/react";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import { NavLink as RouterNavLink, NavLinkProps as RouterNavLinkProps } from 'react-router';
 import { triggerNotification } from "./lib/notifications";
 import { randomId } from "@mantine/hooks";
@@ -10,8 +10,9 @@ import { TimeTrackingService } from "../bindings/handydandytray/internal/timetra
 import dayjs from "./lib/dayjs";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { useConfig } from "./hooks/useConfig";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FlightRecorderService } from "../bindings/handydandytray/internal/logging";
+import { useTodoNavigationStore } from "./hooks/useTodoNavigationStore";
 
 type NavItemProps = {
     icon: React.ForwardRefExoticComponent<IconProps & React.RefAttributes<SVGSVGElement>>
@@ -147,6 +148,24 @@ const DevMenu = () => {
 }
 
 export const HandyDandyTray = () => {
+    const navigate = useNavigate()
+    const navigateToTodo = useTodoNavigationStore((s) => s.navigateToTodo)
+
+    useEffect(() => {
+        const unsubscribe = Events.On('todo:reminderClicked', (event) => {
+            const todoId = event.data as string;
+            console.log("Got event! Scrolling to active todo", todoId)
+            if (todoId) {
+                navigate("/todos")
+                navigateToTodo(todoId)
+            }
+        });
+
+        return () => {
+            unsubscribe(); // Clean up listener on unmount
+        };
+    }, [navigate, navigateToTodo])
+
     return (
         <AppShell withBorder={false} navbar={{ width: 100, breakpoint: "0" }}>
             <AppShell.Navbar p="xs"><NavBar /></AppShell.Navbar>
