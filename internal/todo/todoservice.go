@@ -200,7 +200,7 @@ func (g *TodoService) getNextDueAlert(ctx context.Context) (*time.Time, bool, er
 
 func (g *TodoService) updateAlertState() {
 	nextAlert, hasPastDue, err := g.getNextDueAlert(g.appContext)
-	g.logger.Info("next alert due", "nextAlert", nextAlert, "hasPastDue", hasPastDue, "err", err)
+	g.logger.Info("next alert due", "alertState nextDue", g.alertState.nextDue, "DB nextAlert", nextAlert, "DB hasPastDue", hasPastDue, "err", err)
 
 	if err != nil {
 		g.logger.Error("Failed to get next due alert!", "error", err)
@@ -212,6 +212,8 @@ func (g *TodoService) updateAlertState() {
 		err = g.scheduler.RemoveJob(g.alertState.scheduleJobId)
 	} else if g.alertState.nextDue == nil || (g.alertState.nextDue != nil && nextAlert.Before(*g.alertState.nextDue)) {
 		err = g.scheduler.ScheduleOneShot(g.alertState.scheduleJobId, "todo", *nextAlert, func() {
+			g.logger.Info("Scheduled update to alert state")
+			g.alertState.nextDue = nil
 			g.updateAlertState()
 		})
 	}
