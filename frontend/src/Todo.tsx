@@ -183,6 +183,8 @@ const SetReminderMenu = ({ children, showClearReminder, onSetReminder, currentRe
 
     const devOptions = !import.meta.env.DEV ? [] : [
         { value: dayjs().add(10, 'second'), label: "10 Seconds" },
+        { value: dayjs().add(30, 'second'), label: "30 Seconds" },
+        { value: dayjs().add(1, 'minute'), label: "1 Minute" },
     ]
 
     const options = [
