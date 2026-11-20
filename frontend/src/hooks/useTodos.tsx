@@ -3,14 +3,16 @@ import { Todo as RawTodo, TodoData as RawTodoData, TodoService } from "../../bin
 import { transformDatesFromGo, transformDatesToGo, WithDates } from "./dateAdapter";
 import { Dayjs } from "dayjs";
 import dayjs from "../lib/dayjs";
+import { UUID } from "../../bindings/uuid";
 
 export type UseTodos = {
     todos: Todo[]
     isLoading: boolean
     error: Error | null
-    createTodo: UseMutateAsyncFunction<void, Error, TodoData, unknown>
+    createTodo: UseMutateAsyncFunction<UUID, Error, TodoData, unknown>
     deleteTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
     updateTodo: UseMutateAsyncFunction<void, Error, Todo, unknown>
+    cleanTodos: UseMutateAsyncFunction<void, Error, Dayjs, unknown>
 }
 
 export type Todo = WithDates<RawTodo, "completedAt" | "remindMeAt" | "createdAt">;
@@ -168,6 +170,13 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         },
     })
 
+    const cleanTodosMutation = useMutation({
+        mutationFn: (before: Dayjs) => TodoService.DeleteCompletedBefore(before.toISOString()),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey:['todos',  'completed'] });
+        },
+    })
+
     const updateTodoMutation = useMutation({
         mutationFn: (todo: Todo) => TodoService.UpdateTodo(convertTodoToGo(todo)),
         onSuccess: () => {
@@ -183,6 +192,7 @@ export const useTodos = (completedTodos: boolean = false): UseTodos => {
         createTodo: createTodoMutation.mutateAsync,
         deleteTodo: deleteTodoMutation.mutateAsync,
         updateTodo: updateTodoMutation.mutateAsync,
+        cleanTodos: cleanTodosMutation.mutateAsync,
     };
 }
 
