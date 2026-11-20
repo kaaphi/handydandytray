@@ -1,9 +1,9 @@
-import { ActionIcon, Anchor, Box, Button, Divider, Flex, Group, Menu, MenuProps, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
+import { ActionIcon, Alert, Anchor, Box, Button, Divider, Flex, Group, Menu, MenuProps, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
 import { compareActiveTodoForSort, Todo, useTodos } from "./hooks/useTodos";
 import { useCounter, useDisclosure, useHover, useUncontrolled } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, QuestionIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import { Dayjs } from "dayjs";
 import dayjs from "./lib/dayjs";
@@ -326,11 +326,30 @@ const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItem
 
 type TodoListProps = {
     completed?: boolean,
-    todoItemParams?: Partial<TodoItemProps>
+    todoItemParams?: Partial<TodoItemProps>,
+    viewportRef?: React.RefObject<HTMLDivElement | null>,
+    highlightedId?: string | null,
 }
-const TodoList = ({ completed = false, todoItemParams = {} }: TodoListProps) => {
+const TodoList = ({ completed = false, viewportRef, highlightedId, todoItemParams = {} }: TodoListProps) => {
     const todos = useTodos(completed)
     const items: TodoListItem[] = todos.todos.map((todo, index) => ({ index, ...todo }))
+
+    return (
+        <Table.ScrollContainer minWidth={0} style={{ flex: 1 }} scrollAreaProps={{ viewportRef }}>
+            <Table verticalSpacing="lg" horizontalSpacing="md">
+                <Table.Tbody>
+                    {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
+                </Table.Tbody>
+            </Table>
+        </Table.ScrollContainer>
+    )
+}
+
+type InProgressProps = {
+    openEditTodo: (todo?: TodoListItem) => void,
+}
+const InProgress = ({ openEditTodo }: InProgressProps) => {
+    const todos = useTodos()
 
     // State for active highlight + ref to manage timer cleanup
     const highlightedId = useTodoNavigationStore((s) => s.targetTodoId)
@@ -384,34 +403,38 @@ const TodoList = ({ completed = false, todoItemParams = {} }: TodoListProps) => 
             cancelAnimationFrame(frameId)
         };
     }, [highlightedId, highlightTimer, todos.isLoading])
-
-    return (
-        <Table.ScrollContainer minWidth={0} style={{ flex: 1 }} scrollAreaProps={{ viewportRef }}>
-            <Table verticalSpacing="lg" horizontalSpacing="md">
-                <Table.Tbody>
-                    {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
-                </Table.Tbody>
-            </Table>
-        </Table.ScrollContainer>
-    )
-}
-
-type InProgressProps = {
-    openEditTodo: (todo?: TodoListItem) => void,
-}
-const InProgress = ({ openEditTodo }: InProgressProps) => {
+    
     return (
         <>
-            <TodoList todoItemParams={{
+            <TodoList viewportRef={viewportRef} highlightedId={highlightedId} todoItemParams={{
                 openEditTodo: openEditTodo,
             }} />
         </>
     )
 }
 
+const TOTAL_CLEAN_THRESHOLD = 100
+const CLEAN_THRESHOLD = 30
 const Completed = () => {
-    return (
+    const cleanDate = dayjs().add(-30, "day")
+    const todos = useTodos(true)
+    const [showCleanAlert, setShowCleanAlert] = useState(todos.todos.length > TOTAL_CLEAN_THRESHOLD && todos.todos[todos.todos.length-CLEAN_THRESHOLD].completedAt?.isBefore(cleanDate))
+    const cleanAlertColor = "gray"
+
+    const cleanCount = showCleanAlert ? todos.todos.length-1-todos.todos?.findLastIndex((todo) => todo.completedAt?.isAfter(cleanDate)) : 0
+
+    return (<Flex gap={0} justify="flex-start" direction="column" style={{flex: 1, minHeight: 0}}>
+        {showCleanAlert && <Alert withCloseButton color={cleanAlertColor} m="xs" title="Clean up old todos?" icon={<QuestionIcon />} onClose={() => setShowCleanAlert(false)}>
+            <Stack>
+            <Text>There are {cleanCount} todos completed over {cleanDate.fromNow()}. Delete old completed todos?</Text>
+            <Button color={cleanAlertColor} onClick={() => {
+                todos.cleanTodos(cleanDate)
+                setShowCleanAlert(false)
+            }}>Clean old todos</Button>
+            </Stack>
+        </Alert>}
         <TodoList completed={true} />
+        </Flex>
     )
 }
 

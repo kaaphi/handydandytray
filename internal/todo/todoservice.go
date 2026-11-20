@@ -88,12 +88,16 @@ func (g *TodoService) scheduleInitJobs() {
 	g.updateAlertState()
 }
 
-func (g *TodoService) AddTodo(ctx context.Context, todo TodoData) error {
+func (g *TodoService) AddTodo(ctx context.Context, todo TodoData) (uuid.UUID, error) {
 	g.logger.Info(fmt.Sprintf("add todo: %+v", todo))
-	return g.addOrUpdateTodo(ctx, Todo{
-		ID:       uuid.NewV7(),
+	todoId := uuid.NewV7()
+	if err := g.addOrUpdateTodo(ctx, Todo{
+		ID:       todoId,
 		TodoData: todo,
-	}, `INSERT INTO todos (data, id) VALUES (jsonb(?), ?)`)
+	}, `INSERT INTO todos (data, id) VALUES (jsonb(?), ?)`); err != nil {
+		return uuid.Nil(), err
+	}
+	return todoId, nil
 }
 
 func (g *TodoService) UpdateTodo(ctx context.Context, todo Todo) error {
@@ -127,6 +131,17 @@ func (g *TodoService) DeleteAll(ctx context.Context) error {
 	}
 
 	g.scheduler.RemoveAll(todo_job_tag)
+
+	return nil
+}
+
+func (g *TodoService) DeleteCompletedBefore(ctx context.Context, before time.Time) error {
+	query := `DELETE FROM todos WHERE DATETIME(data->>'$.completedAt') < DATETIME(?)`
+
+	_, err := g.db.ExecContext(ctx, query, before)
+	if err != nil {
+		return fmt.Errorf("delete todos: %w", err)
+	}
 
 	return nil
 }
@@ -261,6 +276,45 @@ func (g *TodoService) getTodosQuery(ctx context.Context, afterFromClauses string
 	}
 
 	return todos, nil
+}
+
+func (g *TodoService) getTodoIdsQuery(ctx context.Context, whereClauseAndArgs ...any) ([]uuid.UUID, error) {
+
+	const selectClause = "SELECT id FROM todos "
+	const orderBy = " ORDER BY id ASC"
+	var query string
+	args := []any{}
+	if len(whereClauseAndArgs) > 0 {
+		query = selectClause + whereClauseAndArgs[0].(string) + orderBy
+		if len(whereClauseAndArgs) > 1 {
+			args = whereClauseAndArgs[1:]
+		}
+	} else {
+		query = selectClause + orderBy
+	}
+
+	rows, err := g.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query todo ids: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]uuid.UUID, 0)
+
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan todo row: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	// Catch any iteration errors
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+
+	return ids, nil
 }
 
 func (g *TodoService) addOrUpdateTodo(ctx context.Context, todo Todo, query string) error {

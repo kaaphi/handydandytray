@@ -13,12 +13,16 @@ import * as uuid$0 from "../../../uuid/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
-export function AddTodo(todo: $models.TodoData): $CancellablePromise<void> {
+export function AddTodo(todo: $models.TodoData): $CancellablePromise<uuid$0.UUID> {
     return $Call.ByID(3182027216, todo);
 }
 
 export function DeleteAll(): $CancellablePromise<void> {
     return $Call.ByID(1509322821);
+}
+
+export function DeleteCompletedBefore(before: string): $CancellablePromise<void> {
+    return $Call.ByID(3018648420, before);
 }
 
 export function DeleteTodo(todo: $models.Todo): $CancellablePromise<void> {
