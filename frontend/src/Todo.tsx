@@ -253,9 +253,7 @@ const TodoItem = (params: TodoItemProps) => {
                     {todo.completedAt && <Divider orientation="vertical" />}
                     <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" />
                 </Group>
-                <Text>
-                    <MarkdownViewer markdown={todo.description} />
-                </Text>
+                <MarkdownViewer markdown={todo.description} style={{ overflowWrap: "anywhere" }} />
             </Stack>
             <TodoItemControls isActive={hovered} {...params} />
         </Table.Td>
