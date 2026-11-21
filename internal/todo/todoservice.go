@@ -214,11 +214,34 @@ func (g *TodoService) getNextDueAlert(ctx context.Context) (*time.Time, bool, er
 }
 
 func (g *TodoService) updateAlertState() {
+	g.doUpdateAlertState(0)
+}
+
+func (g *TodoService) doUpdateAlertState(attemptCount int) {
 	nextAlert, hasPastDue, err := g.getNextDueAlert(g.appContext)
 	g.logger.Info("next alert due", "alertState nextDue", g.alertState.nextDue, "DB nextAlert", nextAlert, "DB hasPastDue", hasPastDue, "err", err)
 
+	retry := func() {
+		var nextAttempt time.Time
+		if attemptCount < 3 {
+			nextAttempt = time.Now().Add(10 * time.Second)
+			g.logger.Debug("Will retry updating alert state", "currentAttempt", attemptCount, "nextAttempt", nextAttempt)
+		} else {
+			nextAttempt = time.Now().Add(5 * time.Minute)
+			g.logger.Info("Will retry updating alert state", "currentAttempt", attemptCount, "nextAttempt", nextAttempt)
+		}
+		if err = g.scheduler.ScheduleOneShot(g.alertState.scheduleJobId, "todo", nextAttempt, func() {
+			g.logger.Info("Scheduled update to retry setting alert state", "attempt", attemptCount + 1)
+			g.doUpdateAlertState(attemptCount + 1)
+		}); err != nil {
+			g.logger.Error("Failed to schedule retry!", "error", err)
+		}
+	}
+
 	if err != nil {
 		g.logger.Error("Failed to get next due alert!", "error", err)
+		retry()
+		return
 	}
 
 	g.notifier.SetIconBadgeAlert(hasPastDue)
@@ -234,6 +257,7 @@ func (g *TodoService) updateAlertState() {
 	}
 	if err != nil {
 		g.logger.Error("Failed to schedule next due alert!", "nextAlert", *nextAlert, "error", err)
+		retry()
 		return
 	}
 
