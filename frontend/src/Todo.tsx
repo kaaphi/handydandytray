@@ -3,7 +3,7 @@ import { compareActiveTodoForSort, Todo, useTodos } from "./hooks/useTodos";
 import { useCounter, useDisclosure, useHover, useUncontrolled } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUUpLeftIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, QuestionIcon, TrashIcon } from "@phosphor-icons/react";
+import { ArrowUUpLeftIcon, CaretDownIcon, CaretUpIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, QuestionIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import { Dayjs } from "dayjs";
 import dayjs from "./lib/dayjs";
@@ -15,6 +15,7 @@ import { MarkdownViewer } from "./lib/MarkdownViewer";
 import { triggerNotification } from "./lib/notifications";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { RelativeTime } from "./lib/dayjs";
+import { FadeSpoiler } from "./lib/FadeSpoiler";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -228,6 +229,27 @@ const SetReminderMenu = ({ children, showClearReminder, onSetReminder, currentRe
     )
 }
 
+const SpoilerTypes = {
+    show: {
+        label: "Expand",
+        icon: <CaretDownIcon />,
+    },
+    hide: {
+        label: "Collapse",
+        icon: <CaretUpIcon />,
+    }
+}
+type SpoilerLabelProps = {
+    type: "show" | "hide"
+}
+const SpoilerLabel = ({type: labelType} : SpoilerLabelProps) => {
+    const spoiler = SpoilerTypes[labelType]
+    return <Group gap="xs" align="center" c="gray.8">
+        <Text span size="xs">{spoiler.label} </Text>
+        {spoiler.icon}
+    </Group>
+}
+
 type TodoItemProps = {
     todo: TodoListItem,
     openEditTodo?: (todo?: TodoListItem) => void,
@@ -253,7 +275,9 @@ const TodoItem = (params: TodoItemProps) => {
                     {todo.completedAt && <Divider orientation="vertical" />}
                     <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" />
                 </Group>
-                <MarkdownViewer markdown={todo.description} style={{ overflowWrap: "anywhere" }} />
+                <FadeSpoiler maxHeight={150} showLabel={<SpoilerLabel type="show" />} hideLabel={<SpoilerLabel type="hide" />} styles={{control: {textDecoration: "none"}}}>
+                    <MarkdownViewer markdown={todo.description} style={{ overflowWrap: "anywhere" }} />
+                </FadeSpoiler>
             </Stack>
             <TodoItemControls isActive={hovered} {...params} />
         </Table.Td>
