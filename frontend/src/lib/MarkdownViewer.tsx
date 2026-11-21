@@ -1,12 +1,12 @@
-import { Typography } from "@mantine/core"
+import { Typography, TypographyProps } from "@mantine/core"
 import { Browser } from "@wailsio/runtime"
 import { marked } from "marked"
 
 export type MarkdownViewerProps = {
     markdown: string
-}
+} & Omit<TypographyProps, "children">
 
-export const MarkdownViewer = ({ markdown }: MarkdownViewerProps) => {
+export const MarkdownViewer = ({ markdown, ...props }: MarkdownViewerProps) => {
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement | null;
         const anchor = target?.closest('a');
@@ -26,7 +26,7 @@ export const MarkdownViewer = ({ markdown }: MarkdownViewerProps) => {
     };
 
     return (
-        <Typography>
+        <Typography {...props}>
             <div onClickCapture={handleClick} dangerouslySetInnerHTML={{ __html: marked.parse(markdown) }} />
         </Typography>
     )
