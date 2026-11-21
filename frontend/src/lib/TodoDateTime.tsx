@@ -35,15 +35,15 @@ const ConditionalDateTimeStyleTypes : Record<string, ConditionalDateTimeStyle> =
         textStyle: {c: "dimmed"},
     },
     dueToday: {
-        symbol: <InfoIcon />,
+        symbol: <InfoIcon weight="bold" />,
         textStyle: {c: "dimmed", fw: 500 },
     },
     mildOverdue: {
-        symbol: <WarningIcon />,
+        symbol: <WarningIcon weight="bold" />,
         textStyle: {c: "yellow", fw: 500},
     },
     overdue: {
-        symbol: <WarningIcon />,
+        symbol: <WarningIcon weight="bold" />,
         textStyle: {c: "red", fw: 500},
     },
 }
