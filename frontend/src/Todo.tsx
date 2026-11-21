@@ -127,10 +127,11 @@ const AddEditTodo = ({ close, todo }: AddEditTodoProps) => {
         };
     }
 
-    return <form onSubmit={form.onSubmit((values) => {
+    return <form onSubmit={form.onSubmit(async (values) => {
         console.log("Form submit", values)
         if (!todo) {
-            todos.createTodo(values)
+            const todoId = await todos.createTodo(values)
+            navigateToTodo(todoId)
         } else {
             const newTodo: Todo = {
                 ...todo,
