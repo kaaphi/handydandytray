@@ -31,7 +31,7 @@ const formatRelativeTime = (time: Dayjs, resolution: RelativeTimeResolution): st
         } else if (time.isYesterday()) {
             return "Yesterday"
         } else {
-            return time.fromNow()
+            return time.from(dayjs().startOf("day"))
         }
         default:
             throw new Error(`Invalid resolution: ${resolution}!`)
