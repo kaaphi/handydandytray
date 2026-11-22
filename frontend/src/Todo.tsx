@@ -209,7 +209,24 @@ const SetReminderMenu = ({ children, showClearReminder, onSetReminder, currentRe
                 }}>Set Reminder</Button>
             </Stack>
         </Modal>
-        <Menu onChange={onChange} {...menuProps}>
+        <Menu
+            onChange={onChange}
+            {...menuProps}
+            // the middlewares handle making the menu scroll if there's not enough room to display the whole thing
+            middlewares={{
+                flip: true,
+                shift: true,
+                size: {
+                    padding: 8, // Keeps an 8px gap from the window edge
+                    apply({ availableHeight, elements }) {
+                        Object.assign(elements.floating.style, {
+                            maxHeight: `${Math.max(80, availableHeight)}px`, //the 80 is a minimum height for the menu so it doesn't become completely unusable in extreme layout situations
+                            overflowY: 'auto',
+                        });
+                    },
+                },
+            }}
+        >
             <Menu.Target>
                 {children}
             </Menu.Target>
