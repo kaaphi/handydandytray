@@ -79,6 +79,14 @@ var schemaVersions = [...]schemaVersion{
 		CREATE INDEX IF NOT EXISTS idx_timetracking_interval_start ON timetracking_intervals(interval_start);
 		`),
 	},
+	{
+		version: 3,
+		migrateAction: createSimpleMigrateAction(`
+		CREATE UNIQUE INDEX idx_todos_single_in_progress
+			ON todos (json_extract(data, '$.in_progress'))
+			WHERE json_extract(data, '$.in_progress') = 1;
+		`),
+	},
 }
 
 // InitDB initializes, configures, and migrates the SQLite database.

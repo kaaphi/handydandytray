@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sortTodos, Todo, _testInternals } from './useTodos';
-import dayjs from "../lib/dayjs"
+import dayjs from "../lib/dayjs";
 
 type SortTodo = {
     createdAt: string
@@ -218,6 +218,13 @@ describe("todo sort calculations", () => {
             input: [
                 { remindMeAt: "2026-10-31 8:30", dueAt: "2026-10-31", createdAt: "2026-10-30 9:00" },
                 { remindMeAt: "2026-10-31 9:30", dueAt: "2026-10-31", createdAt: "2026-10-30 10:00" },
+            ],
+        },
+        {
+            name: "inProgress beats remindMeAt",
+            input: [
+                { remindMeAt: "2026-10-31 9:30", dueAt: "2026-10-31", createdAt: "2026-10-30 10:00", inProgress: true },
+                { remindMeAt: "2026-10-31 8:30", dueAt: "2026-10-31", createdAt: "2026-10-30 9:00" },
             ],
         },
         

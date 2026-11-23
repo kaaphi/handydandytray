@@ -110,6 +110,11 @@ const calculateActiveTodoSortOrder = (todo: Todo, now: Dayjs): TodoSortDetails =
  * @returns a negative value if the first argument is less than the second argument, zero if they're equal, and a positive value otherwise
  */
 export const compareActiveTodoForSort = (a: Todo, b: Todo, now: Dayjs): number => {
+    //handle in progress first, always sort at the top
+    if (!!a.inProgress != !!b.inProgress) {
+        return a.inProgress ? -1 : 1
+    }
+    
     const aOrder = buildSortArray(calculateActiveTodoSortOrder(a, now))
     const bOrder = buildSortArray(calculateActiveTodoSortOrder(b, now))
 

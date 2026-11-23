@@ -39,6 +39,7 @@ type TodoData struct {
 	DueAt       string    `json:"dueAt,omitempty"`
 	CompletedAt time.Time `json:"completedAt,omitzero"`
 	RemindMeAt  time.Time `json:"remindMeAt,omitzero"`
+	InProgress  bool      `json:"inProgress,omitempty"`
 }
 
 type Todo struct {
@@ -231,7 +232,7 @@ func (g *TodoService) doUpdateAlertState(attemptCount int) {
 			g.logger.Info("Will retry updating alert state", "currentAttempt", attemptCount, "nextAttempt", nextAttempt)
 		}
 		if err = g.scheduler.ScheduleOneShot(g.alertState.scheduleJobId, "todo", nextAttempt, func() {
-			g.logger.Info("Scheduled update to retry setting alert state", "attempt", attemptCount + 1)
+			g.logger.Info("Scheduled update to retry setting alert state", "attempt", attemptCount+1)
 			g.doUpdateAlertState(attemptCount + 1)
 		}); err != nil {
 			g.logger.Error("Failed to schedule retry!", "error", err)

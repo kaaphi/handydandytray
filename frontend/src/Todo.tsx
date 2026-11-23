@@ -1,9 +1,9 @@
 import { ActionIcon, Alert, Anchor, Box, Button, Divider, Flex, Group, Menu, MenuProps, Modal, Paper, Stack, Table, Tabs, Text, Textarea, Transition } from "@mantine/core";
-import { compareActiveTodoForSort, Todo, useTodos } from "./hooks/useTodos";
-import { useCounter, useDisclosure, useHover, useUncontrolled } from "@mantine/hooks";
+import { compareActiveTodoForSort, Todo, TodoData, useTodos } from "./hooks/useTodos";
+import { useCounter, useDisclosure, useUncontrolled } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUUpLeftIcon, CaretDownIcon, CaretUpIcon, CheckIcon, ClockIcon, DotsThreeIcon, PencilIcon, PlusIcon, QuestionIcon, TrashIcon } from "@phosphor-icons/react";
+import React, { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { ArrowUUpLeftIcon, CaretDownIcon, CaretUpIcon, CheckIcon, ClockIcon, DotsThreeIcon, LightningIcon, LightningSlashIcon, PencilIcon, PlusIcon, QuestionIcon, TrashIcon } from "@phosphor-icons/react";
 import { DateInput, DatePickerInput, getTimeRange, TimePicker } from "@mantine/dates";
 import { Dayjs } from "dayjs";
 import dayjs from "./lib/dayjs";
@@ -16,6 +16,8 @@ import { triggerNotification } from "./lib/notifications";
 import { DefaultErrorBoundary } from "./FallbackError";
 import { RelativeTime } from "./lib/dayjs";
 import { FadeSpoiler } from "./lib/FadeSpoiler";
+import { TooltipActionIcon } from "./lib/TooltipActionIcon";
+import { useHover } from "./hooks/useHover";
 
 const convertLinkUrl = (url: string): string => {
     if (url.startsWith("https://teams.live.com") || url.startsWith("https://teams.microsoft.com")) {
@@ -46,6 +48,30 @@ const hasTodoIndexChanged = (todos: Todo[], originalTodo: TodoListItem, updatedT
     }
 
     return false
+}
+
+const useUpdateTodoWithNavigate = () => {
+    const todos = useTodos()
+    const navigateToTodo = useTodoNavigationStore((s) => s.navigateToTodo)
+
+    return async (todo: TodoListItem, values: Partial<TodoData>) => {
+
+        const newTodo: Todo = {
+            ...todo,
+            ...values,
+        }
+
+        const isUncompleted = todo.completedAt && !newTodo.completedAt
+
+        const doNavigate = isUncompleted || (!newTodo.completedAt && hasTodoIndexChanged(todos.todos, todo, newTodo))
+
+        todos.updateTodo(newTodo)
+        if (doNavigate) {
+            navigateToTodo(todo.id)
+        }
+
+        return doNavigate
+    }
 }
 
 type ReminderInputProps = {
@@ -84,6 +110,7 @@ type AddEditTodoProps = {
 const AddEditTodo = ({ close, todo }: AddEditTodoProps) => {
     const todos = useTodos()
     const navigateToTodo = useTodoNavigationStore((s) => s.navigateToTodo)
+    const updateTodoWithNavigate = useUpdateTodoWithNavigate()
     const form = useForm({
         mode: "uncontrolled",
         initialValues: {
@@ -134,15 +161,7 @@ const AddEditTodo = ({ close, todo }: AddEditTodoProps) => {
             const todoId = await todos.createTodo(values)
             navigateToTodo(todoId)
         } else {
-            const newTodo: Todo = {
-                ...todo,
-                ...values,
-            }
-            const sortOrderChanged = hasTodoIndexChanged(todos.todos, todo, newTodo)
-            todos.updateTodo(newTodo)
-            if (sortOrderChanged) {
-                navigateToTodo(todo.id)
-            }
+            updateTodoWithNavigate(todo, values)
         }
         close()
     })}>
@@ -267,47 +286,68 @@ const SpoilerLabel = ({type: labelType} : SpoilerLabelProps) => {
     </Group>
 }
 
+type TodoItemHeaderProps = {
+    todo: TodoListItem
+}
+const TodoItemHeader = ({ todo }: TodoItemHeaderProps) => {
+    const headerItems: ReactNode[] = [
+        todo.inProgress ? <Group align="center" gap="xs"><LightningIcon weight="bold" /><Text size="xs" fw="700">In Progress</Text></Group> : null,
+        !todo.inProgress ? <TodoDateTime time={todo.createdAt!} format="date" label="Created on" /> : null,
+        !todo.completedAt && todo.dueAt ? <TodoDateTime time={todo.dueAt} format="relativeDate" label="Due" overdueLabel="Was due" warningType={WarnTypes.dueOnDate} /> : null,
+        !todo.completedAt && todo.remindMeAt ? <TodoDateTime time={todo.remindMeAt} format="relativeTime" label="Remind me" overdueLabel="Reminder overdue" warningType={WarnTypes.dueAtTime} /> : null,
+        todo.completedAt ? <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" /> : null,
+    ]
+        .filter(item => item != null)
+        .flatMap((item, idx) => idx == 0 ? [item] : [<Divider orientation="vertical" />, item])
+
+    return <Group gap="sm" align="center">
+        {headerItems}
+    </Group>
+}
+
 type TodoItemProps = {
     todo: TodoListItem,
     openEditTodo?: (todo?: TodoListItem) => void,
     id?: string,
     isHighlighted: boolean,
+    showInProgressToggle: boolean,
 }
 const TodoItem = (params: TodoItemProps) => {
     const { todo, id, isHighlighted } = params
-    const { hovered, ref } = useHover();
+    const { hovered, ref, setHovered } = useHover();
 
-    return <Table.Tr pos="relative" ref={ref} id={id} bg={isHighlighted ? 'var(--mantine-primary-color-0)' : undefined}
+    return <Table.Tr pos="relative" ref={ref} id={id}
         style={{
             transition: 'background-color 0.5s ease',
+            ...(isHighlighted ? {
+                backgroundColor: "var(--mantine-primary-color-0)"
+            } : {}),
+            ...(todo.inProgress ? {
+                transition: undefined,
+                borderLeft: "2px solid gray", 
+                backgroundColor: "var(--mantine-color-gray-0)",
+            } : {})
         }}>
         <Table.Td>
             <Stack>
-                <Group gap="sm">
-                    <TodoDateTime time={todo.createdAt} format="date" label="Created on" />
-                    {!todo.completedAt && todo.dueAt && <Divider orientation="vertical" />}
-                    <TodoDateTime time={todo.completedAt ? undefined : todo.dueAt} format="relativeDate" label="Due" overdueLabel="Was due" warningType={WarnTypes.dueOnDate} />
-                    {!todo.completedAt && todo.remindMeAt && <Divider orientation="vertical" />}
-                    <TodoDateTime time={todo.completedAt ? undefined : todo.remindMeAt} format="relativeTime" label="Remind me" overdueLabel="Reminder overdue" warningType={WarnTypes.dueAtTime} />
-                    {todo.completedAt && <Divider orientation="vertical" />}
-                    <TodoDateTime time={todo.completedAt} format="relativeTime" label="Completed" />
-                </Group>
+                <TodoItemHeader todo={todo} />
                 <FadeSpoiler maxHeight={150} showLabel={<SpoilerLabel type="show" />} hideLabel={<SpoilerLabel type="hide" />} styles={{control: {textDecoration: "none"}}}>
                     <MarkdownViewer markdown={todo.description} style={{ overflowWrap: "anywhere" }} />
                 </FadeSpoiler>
             </Stack>
-            <TodoItemControls isActive={hovered} {...params} />
+            <TodoItemControls isActive={hovered} setIsActive={setHovered} {...params} />
         </Table.Td>
     </Table.Tr>
 }
 
 type TodoItemControlsProps = TodoItemProps & {
     isActive: boolean,
+    setIsActive: (active: boolean) => void,
 }
-const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItemControlsProps) => {
+const TodoItemControls = ({ isActive, setIsActive, todo, openEditTodo = () => { }, showInProgressToggle }: TodoItemControlsProps) => {
     const isCompleted = !!todo.completedAt
     const todos = useTodos(isCompleted)
-    const navigateToTodo = useTodoNavigationStore((s) => s.navigateToTodo)
+    const updateTodoWithNavigate = useUpdateTodoWithNavigate()
     //we use a counter here instead of a simple boolean state because we can have multiple components stack keep alive needs, we need to keep track of when none of them are keeping the controls alive anymore
     const [keepActiveCounter, keepActiveHandlers] = useCounter(0)
     const updateKeepActive = useCallback((value: boolean) => {
@@ -319,13 +359,8 @@ const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItem
     }, [keepActiveHandlers.increment, keepActiveHandlers.decrement])
 
     const setReminder = useCallback((remindMeAt?: Dayjs) => {
-        const newTodo = { ...todo, remindMeAt }
-        const sortOrderChanged = hasTodoIndexChanged(todos.todos, todo, newTodo)
-        todos.updateTodo(newTodo)
-        if (sortOrderChanged) {
-            navigateToTodo(todo.id)
-        }
-    }, [todos, todo, navigateToTodo])
+        updateTodoWithNavigate(todo, {remindMeAt})
+    }, [todo, updateTodoWithNavigate])
 
     return (
         <Transition transition="fade" duration={250} mounted={isActive || keepActiveCounter > 0}>
@@ -333,12 +368,28 @@ const TodoItemControls = ({ isActive, todo, openEditTodo = () => { } }: TodoItem
                 <Paper style={styles} pos="absolute" top={0}
                     right={0} radius="md" withBorder p="xs" mt="1rem" mr="1rem">
                     <Group>
-                        <ActionIcon variant="light" size="sm" onClick={e => {
-                            todo.completedAt = isCompleted ? undefined : dayjs()
-                            todos.updateTodo(todo)
-                        }}>{isCompleted ? <ArrowUUpLeftIcon /> : <CheckIcon />}</ActionIcon>
-                        {!isCompleted && <SetReminderMenu onChange={updateKeepActive} currentReminder={todo.remindMeAt} onSetReminder={setReminder} showClearReminder={!!todo.remindMeAt}><ActionIcon size="sm" variant="subtle"><ClockIcon /></ActionIcon></SetReminderMenu>}
-                        {isCompleted && <ActionIcon size="sm" variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon /></ActionIcon>}
+                        <TooltipActionIcon tooltip={isCompleted ? "Uncomplete" : "Complete"} variant="light" size="sm" onClick={e => {
+                            updateTodoWithNavigate(todo, {
+                                completedAt: isCompleted ? undefined : dayjs(),
+                                inProgress: false,
+                            })
+                        }}>{isCompleted ? <ArrowUUpLeftIcon /> : <CheckIcon />}</TooltipActionIcon>
+                        {(!isCompleted && showInProgressToggle) && <TooltipActionIcon tooltip={!todo.inProgress ? "Mark in progress" : "Mark not in progress"} size="sm" variant="subtle" onClick={async () => {
+                            const todoUpdates: Partial<TodoData> = {
+                                inProgress: !todo.inProgress
+                            }
+                            
+                            //if we are going in progress and we have a reminder in the past, clear the reminder
+                            if (todoUpdates.inProgress && todo.remindMeAt?.isBefore(dayjs())) {
+                                todoUpdates.remindMeAt = undefined
+                            }
+                            const didNavigate = await updateTodoWithNavigate(todo, todoUpdates)
+                            if(didNavigate) {
+                                setIsActive(false)
+                            }
+                        }}>{todo.inProgress ? <LightningSlashIcon /> : <LightningIcon />}</TooltipActionIcon>}
+                        {!isCompleted && <SetReminderMenu onChange={updateKeepActive} currentReminder={todo.remindMeAt} onSetReminder={setReminder} showClearReminder={!!todo.remindMeAt}><TooltipActionIcon tooltip="Set reminder" size="sm" variant="subtle"><ClockIcon /></TooltipActionIcon></SetReminderMenu>}
+                        {isCompleted && <TooltipActionIcon tooltip="Delete" size="sm" variant="subtle" color="red" onClick={() => todos.deleteTodo(todo)}><TrashIcon /></TooltipActionIcon>}
                         {!isCompleted && <Menu onChange={updateKeepActive}>
                             <Menu.Target>
                                 <ActionIcon size="sm" variant="subtle"><DotsThreeIcon /></ActionIcon>
@@ -373,12 +424,13 @@ type TodoListProps = {
 const TodoList = ({ completed = false, viewportRef, highlightedId, todoItemParams = {} }: TodoListProps) => {
     const todos = useTodos(completed)
     const items: TodoListItem[] = todos.todos.map((todo, index) => ({ index, ...todo }))
+    const hasInProgress = items.length > 0 ? !!items[0].inProgress : false
 
     return (
         <Table.ScrollContainer minWidth={0} style={{ flex: 1 }} scrollAreaProps={{ viewportRef }}>
             <Table verticalSpacing="lg" horizontalSpacing="md">
                 <Table.Tbody>
-                    {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} {...todoItemParams} />)}
+                    {items.map((todo) => <TodoItem key={todo.id} id={`todo-${todo.id}`} todo={todo} isHighlighted={todo.id === highlightedId} showInProgressToggle={!hasInProgress || !!todo.inProgress} {...todoItemParams} />)}
                 </Table.Tbody>
             </Table>
         </Table.ScrollContainer>

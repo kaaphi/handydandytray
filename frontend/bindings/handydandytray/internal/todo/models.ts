@@ -12,6 +12,7 @@ export interface Todo {
     "dueAt"?: string;
     "completedAt"?: string;
     "remindMeAt"?: string;
+    "inProgress"?: boolean;
 }
 
 export interface TodoData {
@@ -19,4 +20,5 @@ export interface TodoData {
     "dueAt"?: string;
     "completedAt"?: string;
     "remindMeAt"?: string;
+    "inProgress"?: boolean;
 }
