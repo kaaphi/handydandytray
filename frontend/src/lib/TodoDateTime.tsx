@@ -84,7 +84,7 @@ export const WarnTypes: Record<string, WarnType> = {
 }
 
 type ConditionalDateTimeProps = {
-    time? : Dayjs|string,
+    time : Dayjs|string,
     label : string,
     overdueLabel? : string,
     format : string,
@@ -92,13 +92,9 @@ type ConditionalDateTimeProps = {
 }
 
 export const TodoDateTime = ({time, label, overdueLabel, format, warningType = WarnTypes.none} : ConditionalDateTimeProps) => {
-    if (time === undefined) {
-        return null
-    }
     if (typeof time === 'string') {
         time = dayjs(time)
     }
-
 
     const finalLabel = (warningType.isOverdue(time) && overdueLabel) ? overdueLabel : label
     const style = warningType.styleChooser(time)
